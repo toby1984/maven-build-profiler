@@ -1,0 +1,38 @@
+/*
+ * Copyright © 2023 Tobias Gierke (tobias.gierke@code-sourcery.de)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package de.codesourcery.maven.buildprofiler.extension;
+
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+class MyExtensionTest
+{
+    @Test
+    void testJsonGeneration()
+    {
+        final List<MyExtension.ExecutionRecord> list = List.of(
+            new MyExtension.ExecutionRecord( "group", "artifact", "1.0-SNAPSHOT", "clean", 23 ),
+            new MyExtension.ExecutionRecord( "group", "artifact", "1.0-SNAPSHOT", "compile", 25 )
+        );
+        final MyExtension instance = new MyExtension();
+        instance.gitHash = "deadbeef";
+        instance.maxConcurrency.set(123);
+        MyExtension.mojoStartTime.set(System.currentTimeMillis() - 1000);
+        final String json = MyExtension.getJSONRequest( list, instance );
+        System.out.println(json);
+    }
+}

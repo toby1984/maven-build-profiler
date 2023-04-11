@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extensions>
+    <extension>
+      <groupId>de.code-sourcery.maven.buildprofiler</groupId>
+      <artifactId>maven-build-profiler-extension</artifactId>
+      <version>1.0.3</version>
+    </extension>
+</extensions>

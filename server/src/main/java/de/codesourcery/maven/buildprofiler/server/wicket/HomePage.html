@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright © 2023 Tobias Gierke (tobias.gierke@code-sourcery.de)
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:wicket="http://wicket.apache.org/">
+
+<wicket:head>
+  <style>
+      .cmpButton {
+          margin-top: 20px;
+      }
+      #dataTable tbody tr td {
+          text-align: center;
+      }
+      #dataTable tbody tr td:nth-child(6) {
+          text-align: right;
+      }
+
+      #dataTable thead tr th {
+          width:150px;
+      }
+      #dataTable thead tr th:nth-child(3) {
+          width:250px;
+      }
+  </style>
+</wicket:head>
+
+<body>
+
+<wicket:extend>
+  <wicket:fragment wicket:id="checkboxFragment">
+    <input type="checkbox" wicket:id="checkbox"/>
+  </wicket:fragment>
+  <form wicket:id="form">
+
+    <select wicket:id="projectSelect" />
+    <select wicket:id="hostSelect" />
+    <select wicket:id="branchSelect" />
+
+    <div style="display:inline" wicket:id="intervalPicker" />
+
+    <button wicket:id="applyButton"><wicket:message key="applyButton.label" /></button>
+
+    <div wicket:id="tableContainer">
+      <div style="display:flex;justify-content: space-between">
+        <a style="align-self:flex-start" wicket:id="prevLink"><wicket:message key="prevLink.label"/></a>
+        <a style="align-self:flex-end" wicket:id="nextLink"><wicket:message key="nextLink.label"/></a>
+      </div>
+      <table id="dataTable" wicket:id="dataTable" />
+    </div>
+
+    <button class="cmpButton" wicket:id="compareButton"><wicket:message key="compareButton.label" /></button>
+
+  </form>
+
+</wicket:extend>
+
+</body>
+
+</html>

@@ -1,38 +1,470 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+
+    Copyright © 2023 Tobias Gierke (tobias.gierke@code-sourcery.de)
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.voipfuture.maven</groupId>
+  <groupId>de.code-sourcery.maven.buildprofiler</groupId>
   <artifactId>maven-build-profiler-parent</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.4-SNAPSHOT</version>
   <packaging>pom</packaging>
+  <name>parent</name>
+  <description>Maven extension that records build execution times for every plugin and lifecycle phase in a build and uploads the metrics to a HTTP server with a simple web UI.</description>
+  <url>https://github.com/toby1984/maven-build-profiler</url>
+
   <properties>
     <maven.version>3.9.0</maven.version>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <junit.version>5.9.2</junit.version>
+    <jackson.version>2.14.2</jackson.version>
+    <postgresql.version>42.5.4</postgresql.version>
+    <wicket.version>9.12.0</wicket.version>
+    <spring-boot.version>2.7.10</spring-boot.version>
+    <wiquery.version>9.0.0</wiquery.version>
+    <serverVersion>1.2.3</serverVersion>
+    <enforcer.plugin.version>3.0.0-M1</enforcer.plugin.version>
   </properties>
+
+  <profiles>
+    <profile>
+      <id>tracking</id>
+      <properties>
+        <buildTimeTrackingProject>maven-build-profiler</buildTimeTrackingProject>
+        <buildTimeTrackingBranch>master</buildTimeTrackingBranch>
+        <buildTimeTrackingEnabled>true</buildTimeTrackingEnabled>
+        <buildTimeTrackingServerUrl>http://localhost:8080/mavenBuildProfiler/api/receive</buildTimeTrackingServerUrl>
+      </properties>
+    </profile>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+          </plugin>
+          <!-- explicitly define maven-deploy-plugin after other to force exec order -->
+          <plugin>
+            <artifactId>maven-deploy-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>deploy</id>
+                <phase>deploy</phase>
+                <goals><goal>deploy</goal></goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
+  <distributionManagement>
+    <snapshotRepository>
+      <id>maven-central-uploads</id>
+      <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+      <id>maven-central-uploads</id>
+      <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
+
+  <scm>
+    <connection>scm:git:git@github.com:toby1984/maven-build-profiler.git</connection>
+    <developerConnection>scm:git:git@github.com:toby1984/maven-build-profiler.git</developerConnection>
+    <url>https://github.com/toby1984/maven-build-profiler</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <developers>
+    <developer>
+      <id>tgierke</id>
+      <name>Tobias Gierke</name>
+      <email>tobias.gierke@code-sourcery.de</email>
+      <roles>
+        <role>developer</role>
+      </roles>
+      <timezone>+1</timezone>
+    </developer>
+  </developers>
+
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+  
   <dependencyManagement>
+    
     <dependencies>
+
       <dependency>
-        <groupId>org.apache.maven</groupId>
-        <artifactId>maven-core</artifactId>
-        <version>${maven.version}</version>
-        <scope>provided</scope>
-        <!-- always provided by the Maven Core Classloader -->
+        <groupId>org.knowm.xchart</groupId>
+        <artifactId>xchart</artifactId>
+        <version>3.8.3</version>
       </dependency>
-      <!-- dependency for JSR 330 annotation -->
+      
+      <!-- Wicket -->
+      
       <dependency>
-        <groupId>javax.inject</groupId>
-        <artifactId>javax.inject</artifactId>
-        <version>1</version>
-        <scope>provided</scope>
-        <!-- always provided by the Maven Core Classloader -->
+        <groupId>org.wicketstuff.wiquery</groupId>
+        <artifactId>wiquery-core</artifactId>
+        <version>${wiquery.version}</version>
       </dependency>
+      
+      <dependency>
+        <groupId>org.wicketstuff.wiquery</groupId>
+        <artifactId>wiquery-jquery-ui</artifactId>
+        <version>${wiquery.version}</version>
+      </dependency>
+      
+      <dependency>
+        <groupId>org.apache.wicket</groupId>
+        <artifactId>wicket-core</artifactId>
+        <version>${wicket.version}</version>
+      </dependency>
+      
+      <dependency>
+        <groupId>org.apache.wicket</groupId>
+        <artifactId>wicket-ioc</artifactId>
+        <version>${wicket.version}</version>
+      </dependency>
+      
+      <dependency>
+        <groupId>org.apache.wicket</groupId>
+        <artifactId>wicket-spring</artifactId>
+        <version>${wicket.version}</version>
+      </dependency>
+      
+      <dependency>
+        <groupId>org.apache.wicket</groupId>
+        <artifactId>wicket-extensions</artifactId>
+        <version>${wicket.version}</version>
+      </dependency>
+      
+      <!-- Servlet API -->
+      <dependency>
+        <groupId>javax.servlet</groupId>
+        <artifactId>javax.servlet-api</artifactId>
+        <version>4.0.1</version>
+        <scope>provided</scope>
+      </dependency>
+      
+      <!-- Spring Boot -->
+      
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <type>pom</type>
+        <version>${spring-boot.version}</version>
+        <scope>import</scope>
+      </dependency>
+      
+      <!-- Test dependencies -->
+      
+      <!-- JUnit / AssertJ -->
+      
+      <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-api</artifactId>
+        <version>${junit.version}</version>
+        <scope>test</scope>
+      </dependency>
+      
+      <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter</artifactId>
+        <version>${junit.version}</version>
+        <scope>test</scope>
+      </dependency>
+      
+      <dependency>
+        <groupId>org.assertj</groupId>
+        <artifactId>assertj-core</artifactId>
+        <version>3.24.2</version>
+        <scope>test</scope>
+      </dependency>
+      
+      <dependency>
+        <groupId>org.easymock</groupId>
+        <artifactId>easymock</artifactId>
+        <version>5.1.0</version>
+        <scope>test</scope>
+      </dependency>
+      
+      <!-- Database related dependencies -->
+      <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>${postgresql.version}</version>
+      </dependency>
+      
+      <!-- Jackson -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      
+      <dependency>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+        <artifactId>jackson-datatype-joda</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-core</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      
+      <dependency>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+        <artifactId>jackson-datatype-jsr310</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      
+      <dependency>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+        <artifactId>jackson-datatype-jdk8</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+
+      <!-- Own dependencies -->
+      
+      <dependency>
+        <groupId>de.code-sourcery.maven.buildprofiler</groupId>
+        <artifactId>maven-build-profiler-extension</artifactId>
+        <version>1.0.4-SNAPSHOT</version>
+      </dependency>
+
+      <dependency>
+        <groupId>de.code-sourcery.maven.buildprofiler</groupId>
+        <artifactId>maven-build-profiler-standalone</artifactId>
+        <version>1.0.4-SNAPSHOT</version>
+      </dependency>
+
+      <dependency>
+        <groupId>de.code-sourcery.maven.buildprofiler</groupId>
+        <artifactId>maven-build-profiler-war</artifactId>
+        <version>1.0.4-SNAPSHOT</version>
+      </dependency>
+
+      <dependency>
+        <groupId>de.code-sourcery.maven.buildprofiler</groupId>
+        <artifactId>maven-build-profiler-server-common</artifactId>
+        <version>1.0.4-SNAPSHOT</version>
+      </dependency>
+
+      <dependency>
+        <groupId>de.code-sourcery.maven.buildprofiler</groupId>
+        <artifactId>maven-build-profiler-shared</artifactId>
+        <version>1.0.4-SNAPSHOT</version>
+      </dependency>
+
+      <dependency>
+        <groupId>de.code-sourcery.maven.buildprofiler</groupId>
+        <artifactId>maven-build-profiler-server</artifactId>
+        <version>1.0.4-SNAPSHOT</version>
+      </dependency>
+      
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>3.11</version>
+      </dependency>
+
     </dependencies>
   </dependencyManagement>
 
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.easymock</groupId>
+      <artifactId>easymock</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+  
+  <build>
+
+    <pluginManagement>
+      
+      <plugins>
+        <plugin><groupId>org.codehaus.plexus</groupId><artifactId>plexus-component-metadata</artifactId><version>2.1.1</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-clean-plugin</artifactId><version>3.2.0</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-install-plugin</artifactId><version>3.1.0</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-site-plugin</artifactId><version>3.12.1</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-deploy-plugin</artifactId><version>3.0.0</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-reactor-plugin</artifactId><version>1.1</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.10.1</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><version>3.0.0-M8</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-jar-plugin</artifactId><version>3.3.0</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-resources-plugin</artifactId><version>3.3.0</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-war-plugin</artifactId><version>3.3.2</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><version>3.2.1</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-javadoc-plugin</artifactId><version>3.5.0</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-deploy-plugin</artifactId><version>3.0.0</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-assembly-plugin</artifactId><version>2.2-beta-5</version></plugin>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-gpg-plugin</artifactId>
+          <version>3.0.1</version>
+          <executions>
+            <execution>
+              <id>sign-artifacts</id>
+              <phase>verify</phase>
+              <goals>
+                <goal>sign</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>build-helper-maven-plugin</artifactId>
+          <version>3.3.0</version>
+        </plugin>        
+        <plugin>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-maven-plugin</artifactId>
+          <version>3.0.5</version>
+        </plugin>
+        <plugin>
+          <groupId>com.mycila</groupId>
+          <artifactId>license-maven-plugin</artifactId>
+          <version>4.2</version>
+          <executions>
+            <execution>
+              <phase>package</phase>
+              <goals>
+                <goal>check</goal>
+              </goals>
+            </execution>
+          </executions>
+          <configuration>
+            <properties>
+              <year>2023</year>
+              <owner>Tobias Gierke</owner>
+              <email>tobias.gierke@code-sourcery.de</email>
+            </properties>
+            <licenseSets>
+              <licenseSet>
+                <header>com/mycila/maven/plugin/license/templates/APACHE-2.txt</header>
+                <excludes>
+                  <exclude>**/README.md</exclude>
+                  <exclude>**/log4j2.xml</exclude>
+                  <exclude>**/d3*.js</exclude>
+                  <exclude>**/extensions.xml</exclude>
+                  <exclude>**/module-info.java</exclude>
+                  <exclude>**/serverVersion.properties</exclude>
+                  <exclude>**/application.properties</exclude>
+                  <exclude>**/mavenBuildProfiler.properties</exclude>
+                  <exclude>**/META-INF/*</exclude>
+                </excludes>
+              </licenseSet>
+            </licenseSets>
+          </configuration>
+        </plugin>
+
+        <!-- enforcer plugin -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <version>${enforcer.plugin.version}</version>
+            <executions>
+                <execution>
+                    <id>enforce-versions</id>
+                    <phase>compile</phase>
+                    <goals>
+                        <goal>enforce</goal>
+                    </goals>
+                    <configuration>
+                        <rules>
+                            <requireMavenVersion>
+                                <version>[3.6.1,)</version>
+                            </requireMavenVersion>
+                            <requireJavaVersion>
+                                <version>[17.0.6,)</version>
+                            </requireJavaVersion>
+                            <requirePluginVersions>
+                                <message>You must explicitly set version numbers for all plugins used in your pom.xml !</message>
+                                <banLatest>true</banLatest>
+                                <banRelease>true</banRelease>
+                                <banSnapshots>true</banSnapshots>
+                                <phases>clean,compile,install,deploy,site</phases>
+                                <additionalPlugins>
+                                    <additionalPlugin>org.apache.maven.plugins:maven-reactor-plugin</additionalPlugin>
+                                </additionalPlugins>
+                            </requirePluginVersions>
+                        </rules>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+
+      </plugins>
+    </pluginManagement>
+
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
 
   <modules>
-    <module>eventspy</module>
+    <module>extension</module>
+    <module>server</module>
+    <module>server-common</module>
+    <module>shared</module>
+    <module>standalone</module>
+    <module>war</module>
   </modules>
 </project>
