@@ -2,7 +2,7 @@
 
 ## What's this?
 
-This is a [Maven extension](https://maven.apache.org/guides/mini/guide-using-extensions.html) that tracks execution times for each plugin and lifecycle phase and sends them (along with some other performance-related info like CPU count, Maven options, some JVM options etc.) as JSON to a REST servlet that persists those metrics to PostgreSQL database.
+This is a [Maven extension](https://maven.apache.org/guides/mini/guide-using-extensions.html) that tracks execution times for each artifact and lifecycle phase and sends them (along with some other performance-related info like CPU count, Maven options, some JVM options etc.) as JSON to a REST servlet that persists those metrics to PostgreSQL database.
 
 I've included a tiny web frontend for exploring the data a bit but obviously one could write a much more fancy one.
 
@@ -71,7 +71,7 @@ Actually tracking the build times is then just a matter of running something lik
     mvn -Ptracking clean install
 ```
 
-Build times for each plugin, project and Maven lifecycle phase are tracked continuously and all sent in a single HTTP request at the very end of a successful build. Failed builds will not send any information to the server.
+Build times for each artifact, project and Maven lifecycle phase are tracked continuously and all sent in a single HTTP request at the very end of a successful build. Failed builds will not send any information to the server.
 
 # Server-side installation
 
