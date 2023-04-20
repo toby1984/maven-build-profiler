@@ -47,6 +47,7 @@ import org.apache.wicket.model.Model;
 import org.apache.wicket.spring.injection.annot.SpringBean;
 
 import java.io.Serializable;
+import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -55,18 +56,28 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class CompareByPhasesPanel extends Panel implements IWicketUtils
 {
+    /**
+     * Percentage value (0...100) that will make an execution time being
+     * rendered as 'slower' (orange) when it is slower than the fastest
+     * execution time.
+     */
+    protected static final int SLOWER_PERCENTAGE_THRESHOLD = 20;
+
     private final IModel<List<Build>> model;
     private final DAO.SearchCriteria criteria;
 
     public final class RowWrapper implements Serializable
     {
         public final String phase;
+        // CAREFUL: The following list will contain NULL values for every build that did not
+        //          have this row's lifecycle phase
         private final List<Duration> executionTimes;
         private final int fastestExecTimeIdx; // index into List<Duration> list
         private final int slowestExecTimeIdx; // index into List<Duration> list
@@ -112,12 +123,25 @@ public class CompareByPhasesPanel extends Panel implements IWicketUtils
             return Optional.ofNullable( executionTimes.get( buildIndex ) );
         }
 
+        public Optional<Duration> getFastest() {
+            return this.executionTimes.stream().filter( Objects::nonNull ).reduce( (a, b) -> a.compareTo( b ) <= 0 ? a : b );
+        }
+
         public boolean isFastest(int durationIdx) {
             return fastestExecTimeIdx == durationIdx;
         }
 
         public boolean isSlowest(int durationIdx) {
             return slowestExecTimeIdx == durationIdx;
+        }
+
+        public Optional<Float> getPercentageDeltaToFastest(int durationIdx) {
+            final Optional<Duration> current = getRecord( durationIdx );
+            final Optional<Duration> fastest = getFastest();
+            if ( current.isEmpty() || fastest.isEmpty() ) {
+                return Optional.empty();
+            }
+            return Optional.of( (100f*(current.get().toMillis() / (float) fastest.get().toMillis()))-100f );
         }
     }
 
@@ -272,9 +296,20 @@ public class CompareByPhasesPanel extends Panel implements IWicketUtils
         {
             final Build build = object.get( idx );
             final int finalIdx = idx;
-            result.add( new LambdaColumn<>( Model.of( "Build " + formatter.format( build.startTime ) ), x ->
+            result.add( new LambdaColumn<>( Model.of( formatter.format( build.startTime ) ), x ->
             {
-                return x.getRecord( finalIdx ).map(Utils::formatDuration).orElse("n/a");
+                final Optional<Duration> record = x.getRecord( finalIdx );
+                String msg = record.map(Utils::formatDuration).orElse("n/a");
+                if ( record.isPresent() && x.isSlowest( finalIdx ) ) {
+                    final Optional<Duration> fastest = x.getFastest();
+                    if ( fastest.isPresent() )
+                    {
+                        final float perc = (100f*(record.get().toMillis() / (float) fastest.get().toMillis()))-100f;
+                        final DecimalFormat DF = new DecimalFormat( "#####0.#" );
+                        msg = "+" + DF.format( perc ) + " % (" + msg + ")";
+                    }
+                }
+                return msg;
             } )
             {
                 @Override
@@ -292,7 +327,19 @@ public class CompareByPhasesPanel extends Panel implements IWicketUtils
                     if ( wrapper.isFastest( finalIdx ) ) {
                         linkWithLabel.getLabel().add( new AttributeModifier( "class", "fastest" ) );
                     } else if ( wrapper.isSlowest( finalIdx ) ) {
-                        linkWithLabel.getLabel().add( new AttributeModifier( "class", "slowest" ) );
+                        final Optional<Float> delta = wrapper.getPercentageDeltaToFastest( finalIdx );
+                        delta.ifPresent( d ->
+                        {
+                            if ( d > 0 )
+                            {
+                                if ( d < SLOWER_PERCENTAGE_THRESHOLD )
+                                {
+                                    linkWithLabel.getLabel().add( new AttributeModifier( "class", "slower" ) );
+                                } else if ( wrapper.isSlowest( finalIdx ) ) {
+                                    linkWithLabel.getLabel().add( new AttributeModifier( "class", "slowest" ) );
+                                }
+                            }
+                        });
                     }
                     item.add( linkWithLabel );
                 }
