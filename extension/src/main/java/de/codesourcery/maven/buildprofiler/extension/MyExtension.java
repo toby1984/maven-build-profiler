@@ -16,6 +16,7 @@
 package de.codesourcery.maven.buildprofiler.extension;
 
 import de.codesourcery.maven.buildprofiler.shared.Constants;
+import org.apache.commons.lang3.Validate;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.eventspy.AbstractEventSpy;
 import org.apache.maven.eventspy.EventSpy;
@@ -23,6 +24,7 @@ import org.apache.maven.execution.DefaultMavenExecutionResult;
 import org.apache.maven.execution.ExecutionEvent;
 import org.apache.maven.execution.MavenExecutionResult;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.Plugin;
 import org.apache.maven.plugin.MojoExecution;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.component.annotations.Component;
@@ -80,7 +82,31 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
 
     private Logger log;
 
-    protected record ExecutionRecord(String groupId, String artifact, String version, String phase, long executionTimeMillis) {}
+    protected record ArtifactCoords(String groupId, String artifactId, String version)
+    {
+        protected ArtifactCoords
+        {
+            Validate.notBlank( groupId, "groupId must not be null or blank");
+            Validate.notBlank( artifactId, "artifactId must not be null or blank");
+            Validate.notBlank( version, "version must not be null or blank");
+        }
+
+        public String getAsString() {
+            return groupId+":"+artifactId+":"+version;
+        }
+    }
+
+     protected record ExecutionRecord(ArtifactCoords artifactBeingBuild,
+                                     ArtifactCoords plugin,
+                                     String phase, long executionTimeMillis) {
+        protected ExecutionRecord
+        {
+            Validate.notNull(artifactBeingBuild, "artifactBeingBuild must not be null");
+            Validate.notNull(plugin, "plugin must not be null");
+            Validate.notBlank( phase, "phase must not be null or blank");
+            Validate.isTrue(executionTimeMillis >= 0, "execution time must be positive");
+        }
+    }
 
     private final AtomicBoolean initialized = new AtomicBoolean( false );
 
@@ -227,7 +253,10 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
                     final Artifact a = r.getProject().getArtifact();
                     synchronized (records)
                     {
-                        records.add(new ExecutionRecord(a.getGroupId(), a.getArtifactId(), a.getVersion(), phase, elapsedMillis));
+                        final ArtifactCoords buildArtifact = new ArtifactCoords(a.getGroupId(), a.getArtifactId(), a.getVersion());
+                        final Plugin p = exec.getPlugin();
+                        final ArtifactCoords pluginArtifact = new ArtifactCoords(p.getGroupId(), p.getArtifactId(), p.getVersion());
+                        records.add(new ExecutionRecord(buildArtifact, pluginArtifact, phase, elapsedMillis));
                     }
                 }
             }
@@ -362,7 +391,8 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
         // records
         json.append( "\"records\"" ).append( " : [ " );
 
-        final Map<String, List<ExecutionRecord>> recordsByArtifactCoords = records.stream().collect( Collectors.groupingBy( x -> x.groupId + ":" + x.artifact + ":" + x.version ) );
+        final Map<ArtifactCoords, List<ExecutionRecord>> recordsByArtifactCoords = records.stream()
+            .collect( Collectors.groupingBy(ExecutionRecord::artifactBeingBuild) );
 
         for ( Iterator<List<ExecutionRecord>>  it = recordsByArtifactCoords.values().iterator() ; it.hasNext() ;  )
         {
@@ -371,30 +401,44 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
             {
                 final ExecutionRecord record = recordsList.get( 0 );
                 json.append( "{ " );
-                json.append( "\"groupId\" : " ).append( jsonString( record.groupId ) ).append( ", " );
-                json.append( "\"artifactId\" : " ).append( jsonString( record.artifact ) ).append( ", " );
-                json.append( "\"version\" : " ).append( jsonString( record.version ) ).append( ", " );
+                json.append( "\"groupId\" : " ).append( jsonString( record.artifactBeingBuild().groupId ) ).append( ", " );
+                json.append( "\"artifactId\" : " ).append( jsonString( record.artifactBeingBuild().artifactId ) ).append( ", " );
+                json.append( "\"version\" : " ).append( jsonString( record.artifactBeingBuild().version ) ).append( ", " );
 
-                // note: Depending on the pom.xml file, multiple execution events for
-                //       the same artifact and phase may occur. Just record one combined
-                //       execution time in that case
-                final Map<String,Long> execTimeMillisByPhase = new HashMap<>();
+                final Map<ArtifactCoords,Map<String,Long>> execTimeMillisByPlugin = new HashMap<>();
                 for ( ExecutionRecord r : recordsList)
                 {
-                    execTimeMillisByPhase.merge(r.phase, r.executionTimeMillis, Long::sum);
+                    final Map<String, Long> newEntry = new HashMap<>(Map.of(r.phase, r.executionTimeMillis));
+                    execTimeMillisByPlugin.merge(r.plugin, newEntry, (a, b) ->
+                    {
+                        final Map<String, Long> merged = new HashMap<>(a);
+                        merged.merge(b.keySet().iterator().next(), b.values().iterator().next(), Long::sum);
+                        return merged;
+                    });
                 }
 
-                json.append( "\"executionTimesByPhase\" : {" );
-                for (Iterator<Map.Entry<String, Long>> entryIt = execTimeMillisByPhase.entrySet().iterator(); entryIt.hasNext(); )
+                // exec times by plugin
+                json.append( "\"executionTimesByPlugin\" : {" );
+                for (Iterator<Map.Entry<ArtifactCoords, Map<String, Long>>> entryIt = execTimeMillisByPlugin.entrySet().iterator(); entryIt.hasNext(); )
                 {
-                    final Map.Entry<String, Long> phaseAndExecTime = entryIt.next();
-                    json.append( jsonString( phaseAndExecTime.getKey() ) ).append( " : " ).append( phaseAndExecTime.getValue() );
+                    final Map.Entry<ArtifactCoords, Map<String, Long>> entry = entryIt.next();
+                    final String pluginCoords = entry.getKey().getAsString();
+                    json.append( jsonString(pluginCoords )).append(" : { ");
+                    for ( Iterator<Map.Entry<String, Long>> mapIt = entry.getValue().entrySet().iterator(); mapIt.hasNext() ; ) {
+                        final Map.Entry<String, Long> phaseAndDuration = mapIt.next();
+                        json.append(jsonString(phaseAndDuration.getKey())).append(" : ").append(phaseAndDuration.getValue());
+                        if ( mapIt.hasNext() ) {
+                            json.append(",");
+                        }
+                    }
+                    json.append("}");
                     if ( entryIt.hasNext() )
                     {
                         json.append( ", " );
                     }
                 }
-                json.append( "}" ); // end executionTimesByPhase
+                json.append( "}" ); // end executionTimesByPlugin
+                // --
                 json.append( "}" ); // end record
 
                 if ( it.hasNext() ) {

@@ -84,6 +84,8 @@ CREATE TABLE profiler.records (
   record_id bigint PRIMARY KEY DEFAULT nextval('profiler.records_seq'),
   build_id bigint NOT NULL REFERENCES profiler.builds(build_id) ON DELETE CASCADE,
   phase_id bigint NOT NULL REFERENCES profiler.phases(phase_id) ON DELETE CASCADE, 
+  plugin_artifact_id bigint NOT NULL REFERENCES profiler.artifacts(artifact_id) ON DELETE CASCADE,
+  plugin_version text NOT NULL,
   artifact_id bigint NOT NULL REFERENCES profiler.artifacts(artifact_id) ON DELETE CASCADE,
   artifact_version text NOT NULL,
   duration_millis integer NOT NULL CHECK(duration_millis>=0)
@@ -107,6 +109,6 @@ BEGIN
       RAISE EXCEPTION 'DB schema version mismatch, expected % but got %',expectedVersion,currentVersion;
     END IF;
 END;
-$function$
+$function$;
 
 COMMIT;

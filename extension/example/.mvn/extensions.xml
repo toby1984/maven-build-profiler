@@ -3,6 +3,6 @@
     <extension>
       <groupId>de.code-sourcery.maven.buildprofiler</groupId>
       <artifactId>maven-build-profiler-extension</artifactId>
-      <version>1.0.3</version>
+      <version>1.0.4-SNAPSHOT</version>
     </extension>
 </extensions>

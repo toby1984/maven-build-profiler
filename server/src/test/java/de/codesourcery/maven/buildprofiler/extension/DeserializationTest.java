@@ -22,6 +22,7 @@ import org.assertj.core.data.Offset;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,9 +31,14 @@ public class DeserializationTest
     @Test
     void test() throws JsonProcessingException
     {
+        final MyExtension.ArtifactCoords artifact1 = new MyExtension.ArtifactCoords("a1-group", "a1-artifact", "1.0-a1-SNAPSHOT");
+        final MyExtension.ArtifactCoords plugin1= new MyExtension.ArtifactCoords("p1-group", "p1-artifact", "1.0-p1-SNAPSHOT");
+        final MyExtension.ArtifactCoords plugin2= new MyExtension.ArtifactCoords("p2-group", "p2-artifact", "1.0-p2-SNAPSHOT");
+
         final List<MyExtension.ExecutionRecord> list = List.of(
-            new MyExtension.ExecutionRecord( "group", "artifact", "1.0-SNAPSHOT", "clean", 23 ),
-            new MyExtension.ExecutionRecord( "group", "artifact", "1.0-SNAPSHOT", "compile", 25 )
+            new MyExtension.ExecutionRecord( artifact1, plugin1, "clean", 23 ),
+            new MyExtension.ExecutionRecord( artifact1,plugin2, "process-sources", 25 ),
+            new MyExtension.ExecutionRecord( artifact1,plugin2, "process-sources", 25 )
         );
         final MyExtension instance = new MyExtension();
         instance.gitHash = "deadbeef";
@@ -61,11 +67,12 @@ public class DeserializationTest
         assertThat( value.gitHash).isNotBlank();
         assertThat( value.systemProperties ).isNotEmpty();
         assertThat( value.records ).hasSize( 1 );
-        assertThat( value.records.get( 0 ).artifactId ).isEqualTo( "artifact" );
-        assertThat( value.records.get( 0 ).groupId ).isEqualTo( "group" );
-        assertThat( value.records.get( 0 ).version ).isEqualTo( "1.0-SNAPSHOT" );
-        assertThat( value.records.get( 0 ).executionTimesByPhase ).isNotEmpty();
-        assertThat( value.records.get( 0 ).executionTimesByPhase ).containsEntry( "clean", 23 );
-        assertThat( value.records.get( 0 ).executionTimesByPhase ).containsEntry( "compile", 25 );
+        final BuildResult.Record record = value.records.get(0);
+        assertThat( record.artifactId ).isEqualTo( artifact1.artifactId() );
+        assertThat( record.groupId ).isEqualTo( artifact1.groupId());
+        assertThat( record.version ).isEqualTo( artifact1.version() );
+
+        assertThat( record.executionTimesByPlugin ).containsEntry( plugin1.getAsString(), Map.of("clean", 23 ) );
+        assertThat( record.executionTimesByPlugin ).containsEntry( plugin2.getAsString(), Map.of("process-sources", 50 ) );
     }
 }

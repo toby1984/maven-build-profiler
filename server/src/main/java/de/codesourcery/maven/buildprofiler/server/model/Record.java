@@ -23,6 +23,8 @@ public class Record implements Serializable
     public long id;
     public long buildId;
     public long phaseId;
+    public long pluginArtifactId;
+    public String pluginVersion;
     public long artifactId;
     public String artifactVersion;
     public Duration duration;

@@ -298,10 +298,12 @@ public class DAO
         @Override
         public Record mapRow(ResultSet rs, int rowNum) throws SQLException
         {
-            Record result = new Record();
+            final Record result = new Record();
             result.id = rs.getLong( "record_id" );
             result.buildId = rs.getLong( "build_id" );
             result.phaseId = rs.getLong( "phase_id" );
+            result.pluginArtifactId = rs.getLong( "plugin_artifact_id" );
+            result.pluginVersion = rs.getString( "plugin_version" );
             result.artifactId = rs.getLong( "artifact_id" );
             result.artifactVersion = rs.getString( "artifact_version" );
             result.duration = duration( "duration_millis", ChronoUnit.MILLIS, rs );
@@ -402,7 +404,7 @@ public class DAO
         Validate.isTrue( toInsert.stream().noneMatch( x -> x.id != 0 ), "this method can only persist new instances" );
         if ( !toInsert.isEmpty() )
         {
-            final List<String> RECORD_COLS = List.of( "build_id", "phase_id", "artifact_id", "artifact_version", "duration_millis" );
+            final List<String> RECORD_COLS = List.of( "build_id", "phase_id", "plugin_artifact_id", "plugin_version", "artifact_id", "artifact_version", "duration_millis" );
 
             jdbcTemplate.execute( (ConnectionCallback<Void>) con ->
             {
@@ -417,6 +419,8 @@ public class DAO
                         int y = 1;
                         stmt.setLong( y++, record.buildId );
                         stmt.setLong( y++, record.phaseId );
+                        stmt.setLong( y++, record.pluginArtifactId );
+                        stmt.setString( y++, record.pluginVersion );
                         stmt.setLong( y++, record.artifactId );
                         stmt.setString( y++, record.artifactVersion );
                         stmt.setInt( y++, (int) record.duration.toMillis() );

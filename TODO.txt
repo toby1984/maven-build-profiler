@@ -1,0 +1,2 @@
+- do not store just duration in each record, also store wallclock start time and wallclock end time for each artifact+plugin+phase so that we can use/calculate actual wallclock time being used and thus are no longer affected by concurrency
+- add some D3 charts

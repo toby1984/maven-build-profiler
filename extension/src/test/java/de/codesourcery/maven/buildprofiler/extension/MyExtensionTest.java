@@ -24,9 +24,13 @@ class MyExtensionTest
     @Test
     void testJsonGeneration()
     {
+        final MyExtension.ArtifactCoords artifact = coords("a-group", "a-artifact", "1.0-a-SNAPSHOT");
+        final MyExtension.ArtifactCoords plugin1= coords("p1-group", "p1-artifact", "1.0-p1-SNAPSHOT");
+        final MyExtension.ArtifactCoords plugin2= coords("p2-group", "p2-artifact", "1.0-p2-SNAPSHOT");
+
         final List<MyExtension.ExecutionRecord> list = List.of(
-            new MyExtension.ExecutionRecord( "group", "artifact", "1.0-SNAPSHOT", "clean", 23 ),
-            new MyExtension.ExecutionRecord( "group", "artifact", "1.0-SNAPSHOT", "compile", 25 )
+            new MyExtension.ExecutionRecord( artifact, plugin1, "clean", 23 ),
+            new MyExtension.ExecutionRecord( artifact, plugin2, "compile", 25 )
         );
         final MyExtension instance = new MyExtension();
         instance.gitHash = "deadbeef";
@@ -34,5 +38,9 @@ class MyExtensionTest
         MyExtension.mojoStartTime.set(System.currentTimeMillis() - 1000);
         final String json = MyExtension.getJSONRequest( list, instance );
         System.out.println(json);
+    }
+
+    private static MyExtension.ArtifactCoords coords(String groupId, String artifactId, String version) {
+        return new MyExtension.ArtifactCoords(groupId, artifactId, version);
     }
 }

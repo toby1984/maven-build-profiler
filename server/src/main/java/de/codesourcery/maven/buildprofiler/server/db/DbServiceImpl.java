@@ -34,13 +34,7 @@ import java.net.UnknownHostException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -220,9 +214,14 @@ public class DbServiceImpl implements DbService
         final Set<ArtifactId> artifactIds = new HashSet<>();
         for ( BuildResult.Record record : data.records )
         {
-            requiredPhases.addAll( record.executionTimesByPhase.keySet() );
+            record.executionTimesByPlugin.values().stream().map(Map::keySet).flatMap(Collection::stream).distinct().forEach( requiredPhases::add );
             artifactIds.add( new ArtifactId( record.groupId, record.artifactId ) );
+            record.executionTimesByPlugin.keySet().stream().map( x -> {
+                final String[] parts = x.split(":");
+                return new ArtifactId(parts[0], parts[1]);
+            }).distinct().forEach(artifactIds::add );
         }
+
         // get phases & insert any missing phases into DB
         final Map<String, LifecyclePhase> existingPhases = dao.getPhases( requiredPhases );
         if ( existingPhases.size() != requiredPhases.size() )
@@ -259,14 +258,21 @@ public class DbServiceImpl implements DbService
         for ( final BuildResult.Record r : data.records )
         {
             final Artifact artifact = found.get( new ArtifactId( r.groupId, r.artifactId ) );
-            r.executionTimesByPhase.forEach( (phase,duration) -> {
-                final Record rec = new Record();
-                rec.buildId = b.id;
-                rec.phaseId = existingPhases.get(phase).phaseId;
-                rec.artifactId = artifact.id;
-                rec.artifactVersion = r.version;
-                rec.duration = Duration.ofMillis( duration );
-                records.add( rec );
+            r.executionTimesByPlugin.forEach( (pluginArtifactIdString,phaseAndDuration) ->
+            {
+                final String[] parts = pluginArtifactIdString.split(":");
+                final long pluginArtifactId = found.get(new ArtifactId(parts[0], parts[1])).id;
+                phaseAndDuration.forEach( (phase,duration) -> {
+                    final Record rec = new Record();
+                    rec.buildId = b.id;
+                    rec.phaseId = existingPhases.get(phase).phaseId;
+                    rec.pluginArtifactId = pluginArtifactId;
+                    rec.pluginVersion = parts[2];
+                    rec.artifactId = artifact.id;
+                    rec.artifactVersion = r.version;
+                    rec.duration = Duration.ofMillis( duration );
+                    records.add( rec );
+                });
             });
         }
         dao.saveRecords( records );

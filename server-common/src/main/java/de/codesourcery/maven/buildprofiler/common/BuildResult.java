@@ -70,6 +70,8 @@ public class BuildResult
         public String groupId;
         public String artifactId;
         public String version;
-        public Map<String,Integer> executionTimesByPhase;
+        // key is plugin groupId:artifactId:version,
+        // value is map with lifecycle phase as key and duration (in millis) as value
+        public Map<String,Map<String,Integer>> executionTimesByPlugin;
     }
 }
