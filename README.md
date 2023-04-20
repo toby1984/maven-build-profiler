@@ -6,6 +6,10 @@ This is a [Maven extension](https://maven.apache.org/guides/mini/guide-using-ext
 
 I've included a tiny web frontend for exploring the data a bit but obviously one could write a much more fancy one.
 
+![screenshot #1](https://raw.githubusercontent.com/toby1984/maven-build-profiler/master/screenshot1.png)
+![screenshot #2](https://raw.githubusercontent.com/toby1984/maven-build-profiler/master/screenshot2.png)
+![screenshot #3](https://raw.githubusercontent.com/toby1984/maven-build-profiler/master/screenshot3.png)
+
 # Technologies used
 
 Maven, Spring Boot, Apache Wicket, D3.js, PostgreSQL
