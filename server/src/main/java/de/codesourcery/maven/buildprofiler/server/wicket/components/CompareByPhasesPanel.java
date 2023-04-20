@@ -55,6 +55,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -66,7 +67,7 @@ public class CompareByPhasesPanel extends Panel implements IWicketUtils
     public final class RowWrapper implements Serializable
     {
         public final String phase;
-        public final List<Duration> executionTimes;
+        private final List<Duration> executionTimes;
         private final int fastestExecTimeIdx; // index into List<Duration> list
         private final int slowestExecTimeIdx; // index into List<Duration> list
 
@@ -99,6 +100,16 @@ public class CompareByPhasesPanel extends Panel implements IWicketUtils
             }
             this.fastestExecTimeIdx = fastIdx;
             this.slowestExecTimeIdx = slowIdx;
+        }
+
+        /**
+         * Returns the record for a given build index.
+         * @param buildIndex
+         * @return record or <code>null</code> if the build at the
+         * given <code>buildIndex</code> did not have an artifact matching the current {@link #phase}.
+         */
+        public Optional<Duration> getRecord(int buildIndex) {
+            return Optional.ofNullable( executionTimes.get( buildIndex ) );
         }
 
         public boolean isFastest(int durationIdx) {
@@ -263,8 +274,7 @@ public class CompareByPhasesPanel extends Panel implements IWicketUtils
             final int finalIdx = idx;
             result.add( new LambdaColumn<>( Model.of( "Build " + formatter.format( build.startTime ) ), x ->
             {
-                final Duration execTime = x.executionTimes.get( finalIdx );
-                return execTime == null ? "n/a" : Utils.formatDuration( execTime );
+                return x.getRecord( finalIdx ).map(Utils::formatDuration).orElse("n/a");
             } )
             {
                 @Override

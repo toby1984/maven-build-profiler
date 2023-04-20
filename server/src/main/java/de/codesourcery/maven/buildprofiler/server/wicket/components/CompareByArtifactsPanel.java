@@ -52,6 +52,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -72,7 +73,7 @@ public class CompareByArtifactsPanel extends Panel implements IWicketUtils
     public final class RowWrapper implements Serializable
     {
         public final ArtifactId artifactId;
-        public final List<DurationAndArtifactVersion> executionTimes;
+        private final List<DurationAndArtifactVersion> executionTimes;
         private final int fastestExecTimeIdx; // index into List<Duration> list
         private final int slowestExecTimeIdx; // index into List<Duration> list
 
@@ -106,6 +107,16 @@ public class CompareByArtifactsPanel extends Panel implements IWicketUtils
             }
             this.fastestExecTimeIdx = fastIdx;
             this.slowestExecTimeIdx = slowIdx;
+        }
+
+        /**
+         * Returns the record for a given build index.
+         * @param buildIndex
+         * @return record or <code>null</code> if the build at the
+         * given <code>buildIndex</code> did not have an artifact matching the current {@link #artifactId}.
+         */
+        public Optional<DurationAndArtifactVersion> getRecord(int buildIndex) {
+            return Optional.ofNullable( executionTimes.get( buildIndex ) );
         }
 
         public boolean isFastest(int durationIdx) {
@@ -251,8 +262,8 @@ public class CompareByArtifactsPanel extends Panel implements IWicketUtils
             final int finalIdx = idx;
             result.add( new LambdaColumn<>( Model.of( "Build " + formatter.format( build.startTime ) ), x ->
             {
-                final Duration execTime = x.executionTimes.get( finalIdx ).duration();
-                return execTime == null ? "n/a" : Utils.formatDuration( execTime );
+                return x.getRecord( finalIdx ).map( DurationAndArtifactVersion::duration )
+                    .map( Utils::formatDuration ).orElse( "n/a" );
             } )
             {
                 @Override
@@ -266,7 +277,7 @@ public class CompareByArtifactsPanel extends Panel implements IWicketUtils
                         label.add( new AttributeModifier( "class", "slowest" ) );
                     }
                     final IModel<String> ttModel = rowModel.map( x -> {
-                        final String version = x.executionTimes.isEmpty() ? "n/a" : x.executionTimes.get(0).artifactVersion;
+                        final String version = x.executionTimes.isEmpty() ? "n/a" : x.getRecord( 0 ).map( y -> y.artifactVersion ).orElse( "n/a" );
                         return """
                             <table>
                               <tr><td>groupId:</td><td>%s</td></tr>
