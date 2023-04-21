@@ -124,12 +124,6 @@
     
     <dependencies>
 
-      <dependency>
-        <groupId>org.knowm.xchart</groupId>
-        <artifactId>xchart</artifactId>
-        <version>3.8.3</version>
-      </dependency>
-      
       <!-- Wicket -->
       
       <dependency>

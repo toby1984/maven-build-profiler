@@ -24,6 +24,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 
 import javax.servlet.DispatcherType;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
 import java.util.EnumSet;
 
 @org.springframework.context.annotation.Configuration
@@ -38,8 +40,14 @@ public class Configuration
     @Bean
     public FilterRegistrationBean<WicketFilter> wicketFilter()
     {
-        final WicketFilter wicketFilter = new WicketFilter();
-        wicketFilter.setFilterPath( "/wicket" );
+        final WicketFilter wicketFilter = new WicketFilter() {
+            @Override
+            public void init(boolean isServlet, FilterConfig filterConfig) throws ServletException
+            {
+                setFilterPath( "/wicket" );
+                super.init( isServlet, filterConfig );
+            }
+        };
 
         final FilterRegistrationBean<WicketFilter> filter = new FilterRegistrationBean<>( wicketFilter );
         filter.setName("wicket-filter");

@@ -20,6 +20,11 @@ import de.codesourcery.maven.buildprofiler.server.db.DAO;
 import de.codesourcery.maven.buildprofiler.server.db.DbService;
 import de.codesourcery.maven.buildprofiler.server.model.Build;
 import de.codesourcery.maven.buildprofiler.server.model.Host;
+import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.DataSet;
+import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.DateXYDataItem;
+import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.LineChart;
+import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.NumericXYDataItem;
+import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.XYDataItem;
 import de.codesourcery.maven.buildprofiler.server.wicket.components.datatable.MyDataTable;
 import de.codesourcery.maven.buildprofiler.server.wicket.components.tooltip.TooltipBehaviour;
 import org.apache.commons.lang3.Validate;
@@ -77,19 +82,17 @@ public class HomePage extends AbstractBasePage
     }
 
     @SpringBean
-    private ChartHelper chartHelper;
-
-    @SpringBean
     private DbService db;
 
     private final Set<Long> buildIdsForComparison = new HashSet<>();
 
     private final DAO.SearchCriteria criteria;
 
-    private final ISortableDataProvider<Build, TableColumn> dataProvider = new SortableDataProvider<>()
+    private final class MyDataProvider extends SortableDataProvider<Build, TableColumn>
     {
-        @Override
-        public Iterator<? extends Build> iterator(long first, long count)
+        // TODO: Cache results, implement detach()
+
+        public List<? extends Build> list(long first, long count)
         {
             criteria.offset = (int) first;
             criteria.limit = (int) count;
@@ -102,8 +105,13 @@ public class HomePage extends AbstractBasePage
                 case HOST_NAME -> DAO.SearchCriteria.SortColumn.HOST;
                 case BUILD_DURATION -> DAO.SearchCriteria.SortColumn.BUILD_DURATION;
             };
-            final List<Build> list = db.getBuild( criteriaWithAnyValuesReplaced() );
-            return list.iterator();
+            return db.getBuild( criteriaWithAnyValuesReplaced() );
+        }
+
+        @Override
+        public Iterator<? extends Build> iterator(long first, long count)
+        {
+            return list( first, count ).iterator();
         }
 
         @Override
@@ -131,7 +139,10 @@ public class HomePage extends AbstractBasePage
         {
             return Model.of( object );
         }
-    };
+    }
+
+    private MyDataTable<Build, TableColumn> dataTable;
+    private final MyDataProvider dataProvider = new MyDataProvider();
 
     private Button compareButton;
 
@@ -169,6 +180,43 @@ public class HomePage extends AbstractBasePage
         tableContainer.setOutputMarkupId( true );
         form.add( tableContainer );
 
+        // line chart
+        final IModel<DataSet<DateXYDataItem>> chartData = new IModel<>() {
+
+            @Override
+            public void detach()
+            {
+                dataProvider.detach();
+            }
+
+            @Override
+            public DataSet<DateXYDataItem> getObject()
+            {
+                final long offset = dataTable.getCurrentPage() * dataTable.getItemsPerPage();
+                final long count = Math.min( dataTable.getItemsPerPage(), dataProvider.size() - offset );
+                final List<DateXYDataItem> items = dataProvider.list(offset, count ).stream().map( x -> new DateXYDataItem( x.startTime, x.duration.toMillis() ) ).toList();
+                return new DataSet<>( items );
+            }
+        };
+
+        final LineChart<DateXYDataItem> chart = new LineChart<>("linechart", chartData)
+        {
+
+            @Override
+            protected String getXAxisLabelFor(DateXYDataItem x)
+            {
+                final DateTimeFormatter DF = DateTimeFormatter.ofPattern( "yyyy-MM-dd HH:mm:ss" );
+                return DF.format( x.x() );
+            }
+
+            @Override
+            protected String getChartLabel()
+            {
+                return "Build time [ms]";
+            }
+        };
+        tableContainer.add( chart );
+
         // data table
         final TableColumn sortCol = switch( criteria.sortColumn ) {
             case BUILD_TIMESTAMP -> TableColumn.BUILD_TIMESTAMP;
@@ -179,7 +227,7 @@ public class HomePage extends AbstractBasePage
         };
         dataProvider.getSortState().setPropertySortOrder( sortCol, criteria.sortAscending ? SortOrder.ASCENDING : SortOrder.DESCENDING );
 
-        final MyDataTable<Build, TableColumn> dataTable = createDataTable( "dataTable", dataProvider );
+        dataTable = createDataTable( "dataTable", dataProvider );
         tableContainer.add( dataTable );
         dataTable.setItemsPerPage( criteria.limit ); // needs to be done BEFORE invoking setCurrentPage() as it resets the current page to zero
         dataTable.setCurrentPage( criteria.offset / criteria.limit );

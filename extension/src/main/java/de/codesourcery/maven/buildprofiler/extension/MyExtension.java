@@ -17,6 +17,7 @@ package de.codesourcery.maven.buildprofiler.extension;
 
 import de.codesourcery.maven.buildprofiler.shared.Constants;
 import org.apache.commons.lang3.Validate;
+import de.codesourcery.maven.buildprofiler.shared.Utils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.eventspy.AbstractEventSpy;
 import org.apache.maven.eventspy.EventSpy;
@@ -340,17 +341,19 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
         json.append( "\"buildStartTime\" : " ).append( System.currentTimeMillis() ).append( ", " );
         final long buildTimeMillis = System.currentTimeMillis() - profilingStartTime;
         json.append( "\"buildDurationMillis\" : " ).append( buildTimeMillis ).append( ", " );
-        json.append( "\"hostIP\" : " ).append( jsonString( hostIP().getHostAddress() ) ).append( ", " );
-        hostName().ifPresent(x -> json.append( "\"hostName\" : " ).append( jsonString(x) ).append( ", " ));
+        String input1 = hostIP().getHostAddress();
+        json.append( "\"hostIP\" : " ).append( Utils.jsonString( input1 ) ).append( ", " );
+        hostName().ifPresent(x -> json.append( "\"hostName\" : " ).append( Utils.jsonString( x ) ).append( ", " ) );
         json.append( "\"maxConcurrency\" : " ).append( instance.maxConcurrency ).append( ", " );
-        json.append( "\"jvmVersion\" : " ).append( jsonString( System.getProperty("java.version") ) ).append( ", " );
+        String input = System.getProperty("java.version");
+        json.append( "\"jvmVersion\" : " ).append( Utils.jsonString( input ) ).append( ", " );
         json.append( "\"availableProcessors\" : " ).append( Runtime.getRuntime().availableProcessors() ).append( ", " );
-        json.append( "\"projectName\" : " ).append( jsonString( instance.projectName ) ).append( ", " );
-        json.append( "\"branchName\" : " ).append( jsonString( instance.branchName ) ).append( ", " );
+        json.append( "\"projectName\" : " ).append( Utils.jsonString( instance.projectName ) ).append( ", " );
+        json.append( "\"branchName\" : " ).append( Utils.jsonString( instance.branchName ) ).append( ", " );
 
         if ( instance.gitHash != null )
         {
-            json.append("\"gitHash\" : ").append( jsonString( instance.gitHash ) ).append(", ");
+            json.append("\"gitHash\" : ").append( Utils.jsonString( instance.gitHash ) ).append(", ");
         }
         // system properties
         json.append("\"systemProperties\" : { ");
@@ -471,36 +474,12 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
                 }
                 first = false;
                 final String value = entry.getValue();
-                final String quotedKey = jsonString( key );
-                final String quotedValue = value == null ? "null" : jsonString( value );
+                final String quotedKey = Utils.jsonString( key );
+                final String quotedValue;
+                quotedValue = value == null ? "null" : Utils.jsonString( value );
                 json.append( quotedKey ).append( " : " ).append( quotedValue );
             }
         }
-    }
-
-    private static String jsonString(String input)
-    {
-        if ( input == null )
-        {
-            return "null";
-        }
-        final char[] array = input.toCharArray();
-        final StringBuilder result = new StringBuilder(array.length);
-        for ( char c : array )
-        {
-            switch( c )
-            {
-                case '\\' -> result.append( "\\\\" );
-                case '"' -> result.append( "\\\"" );
-                case '\f' -> result.append( "\\f" );
-                case '\b' -> result.append( "\\b" );
-                case '\t' -> result.append( "\\t" );
-                case '\r' -> result.append( "\\r" );
-                case '\n' -> result.append( "\\n" );
-                default -> result.append( c );
-            }
-        }
-        return '"' + result.toString() + '"';
     }
 
     @Override
