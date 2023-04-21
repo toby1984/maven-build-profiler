@@ -393,7 +393,7 @@
                 <excludes>
                   <exclude>**/README.md</exclude>
                   <exclude>**/log4j2.xml</exclude>
-                  <exclude>**/d3*.js</exclude>
+                  <exclude>**/frappe*.js</exclude>
                   <exclude>**/extensions.xml</exclude>
                   <exclude>**/module-info.java</exclude>
                   <exclude>**/serverVersion.properties</exclude>

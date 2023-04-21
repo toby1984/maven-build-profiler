@@ -404,9 +404,9 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
             {
                 final ExecutionRecord record = recordsList.get( 0 );
                 json.append( "{ " );
-                json.append( "\"groupId\" : " ).append( jsonString( record.artifactBeingBuild().groupId ) ).append( ", " );
-                json.append( "\"artifactId\" : " ).append( jsonString( record.artifactBeingBuild().artifactId ) ).append( ", " );
-                json.append( "\"version\" : " ).append( jsonString( record.artifactBeingBuild().version ) ).append( ", " );
+                json.append( "\"groupId\" : " ).append( Utils.jsonString( record.artifactBeingBuild().groupId ) ).append( ", " );
+                json.append( "\"artifactId\" : " ).append( Utils.jsonString( record.artifactBeingBuild().artifactId ) ).append( ", " );
+                json.append( "\"version\" : " ).append( Utils.jsonString( record.artifactBeingBuild().version ) ).append( ", " );
 
                 final Map<ArtifactCoords,Map<String,Long>> execTimeMillisByPlugin = new HashMap<>();
                 for ( ExecutionRecord r : recordsList)
@@ -426,10 +426,10 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
                 {
                     final Map.Entry<ArtifactCoords, Map<String, Long>> entry = entryIt.next();
                     final String pluginCoords = entry.getKey().getAsString();
-                    json.append( jsonString(pluginCoords )).append(" : { ");
+                    json.append( Utils.jsonString(pluginCoords )).append(" : { ");
                     for ( Iterator<Map.Entry<String, Long>> mapIt = entry.getValue().entrySet().iterator(); mapIt.hasNext() ; ) {
                         final Map.Entry<String, Long> phaseAndDuration = mapIt.next();
-                        json.append(jsonString(phaseAndDuration.getKey())).append(" : ").append(phaseAndDuration.getValue());
+                        json.append(Utils.jsonString(phaseAndDuration.getKey())).append(" : ").append(phaseAndDuration.getValue());
                         if ( mapIt.hasNext() ) {
                             json.append(",");
                         }
