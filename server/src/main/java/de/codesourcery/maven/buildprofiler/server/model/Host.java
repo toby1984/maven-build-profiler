@@ -15,6 +15,7 @@
  */
 package de.codesourcery.maven.buildprofiler.server.model;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 
 import java.io.Serializable;
@@ -47,5 +48,19 @@ public class Host implements Serializable
     public InetAddress getHostIP()
     {
         return hostIP;
+    }
+
+    @Override
+    public String toString()
+    {
+        return getUIString();
+    }
+
+    public String getUIString()
+    {
+        if ( StringUtils.isNotBlank(hostName ) ) {
+            return hostName + " (" + hostIP.getHostAddress() + ")";
+        }
+        return hostIP.getHostAddress();
     }
 }

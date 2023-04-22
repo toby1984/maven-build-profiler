@@ -24,4 +24,12 @@ public class Artifact
     public ArtifactId toArtifactId() {
         return new ArtifactId( groupId, artifactId );
     }
+
+    public String toUIString() {
+        return groupId+":"+artifactId;
+    }
+
+    public String toUIString(String version) {
+        return toUIString()+":"+version;
+    }
 }

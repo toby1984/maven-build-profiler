@@ -102,6 +102,7 @@ public class DbServiceImpl implements DbService
     }
 
     @Override
+    @Transactional
     public List<LifecyclePhase> getPhasesByIDs(Set<Long> phaseIds)
     {
         return dao.getPhasesByIDs( phaseIds );

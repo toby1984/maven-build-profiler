@@ -17,7 +17,6 @@ package de.codesourcery.maven.buildprofiler.server.wicket;
 
 import de.codesourcery.maven.buildprofiler.server.db.DbService;
 import de.codesourcery.maven.buildprofiler.server.model.Artifact;
-import de.codesourcery.maven.buildprofiler.server.model.ArtifactId;
 import de.codesourcery.maven.buildprofiler.server.model.Build;
 import de.codesourcery.maven.buildprofiler.server.model.LifecyclePhase;
 import de.codesourcery.maven.buildprofiler.server.model.Record;
@@ -26,18 +25,18 @@ import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.PieCh
 import org.apache.commons.lang3.Validate;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.panel.Panel;
-import org.apache.wicket.model.ChainingModel;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.LoadableDetachableModel;
 import org.apache.wicket.spring.injection.annot.SpringBean;
 
 import java.awt.Color;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class BuildInfoPanel extends Panel
+public class BuildInfoPanel extends Panel implements IWicketUtils
 {
     private final IModel<Build> model;
 
@@ -66,23 +65,29 @@ public class BuildInfoPanel extends Panel
         };
 
         // label
-        final IModel<String> labelModel = model.map( x -> "Project "+x.projectName+", branch "+x.branchName+", host "+x.host+" @ "+x.startTime );
-        add( new Label( "label", labelModel ) );
+        add( new Label( "projectName", model.map(x->x.projectName)) );
+        add( new Label( "branchName", model.map( x -> x.branchName ) ) );
+        add( new Label( "hostName", model.map( x -> x.host.getUIString() ) ) );
 
         // by-phase pie chart
         final IModel<List<PieChartItem>> byPhaseModel = recordsModel.map( list -> {
-
-            final Iterator<Color> colorIterator = ColorUtils.getChartColorSupplier();
 
             // group records by Phase
             final Map<Long, List<Record>> byPhaseID = list.stream().collect( Collectors.groupingBy( x -> x.phaseId ) );
             final Map<Long, LifecyclePhase> phasesByID = dbService.getPhasesByIDs( byPhaseID.keySet() ).stream().collect( Collectors.toMap( x -> x.phaseId, y -> y ) );
 
+            final Iterator<Color> colorIterator = ColorUtils.getChartColorSupplier();
+            final List<PieChartItem> result = new ArrayList<>();
+
             final long totalDuration = list.stream().mapToLong( x -> x.duration.toMillis() ).sum();
-            return list.stream().map( x -> {
-                final double percDuration = 100.0 * (x.duration.toMillis() / (double) totalDuration);
-                return new PieChartItem( phasesByID.get( x.phaseId ).name, colorIterator.next(), percDuration );
-            } ).toList();
+
+            byPhaseID.forEach( (phaseId, records) -> {
+                final long time = records.stream().mapToLong( x -> x.duration.toMillis() ).sum();
+                final double percDuration = 100.0 * ( time / (double) totalDuration);
+                final LifecyclePhase phase = phasesByID.get( phaseId );
+                result.add( new PieChartItem( phase.name, colorIterator.next(), percDuration ) );
+            });
+            return result;
         });
 
         add( new PieChart("timeByPhase",byPhaseModel)
@@ -97,8 +102,6 @@ public class BuildInfoPanel extends Panel
         // by plugin pie chart
         final IModel<List<PieChartItem>> byPluginModel = recordsModel.map( list -> {
 
-            final Iterator<Color> colorIterator = ColorUtils.getChartColorSupplier();
-
             // group records by plugin artifact id
             final Map<Long, List<Record>> byPluginArtifactId = list.stream().collect( Collectors.groupingBy( x -> x.pluginArtifactId ) );
 
@@ -106,17 +109,23 @@ public class BuildInfoPanel extends Panel
                 Collectors.toMap( x->x.id, y -> y ) );
 
             final long totalDuration = list.stream().mapToLong( x -> x.duration.toMillis() ).sum();
-            return list.stream().map( x -> {
-                final double percDuration = 100.0 * (x.duration.toMillis() / (double) totalDuration);
-                final Artifact plugin = pluginsByArtifactId.get( x.pluginArtifactId );
+
+            final Iterator<Color> colorIterator = ColorUtils.getChartColorSupplier();
+            final List<PieChartItem> result = new ArrayList<>();
+            byPluginArtifactId.forEach( (pluginArtifactId, records) -> {
+                final long time = records.stream().mapToLong( x -> x.duration.toMillis() ).sum();
+                final double percDuration = 100.0 * (time / (double) totalDuration);
+                final Record r = records.get( 0 );
+                final Artifact plugin = pluginsByArtifactId.get( r.pluginArtifactId );
                 final String label;
                 if ( "org.apache.maven.plugins".equals( plugin.groupId ) ) {
-                    label = plugin.artifactId + ":" + x.pluginVersion;
+                    label = plugin.artifactId + ":" + r.pluginVersion;
                 } else {
-                    label = plugin.groupId + ":" + plugin.artifactId + ":" + x.pluginVersion;
+                    label = plugin.toUIString( r.pluginVersion );
                 }
-                return new PieChartItem( label, colorIterator.next(), percDuration );
-            } ).toList();
+                result.add( new PieChartItem( label, colorIterator.next(), percDuration ) );
+            } );
+            return result;
         });
 
         add( new PieChart("timeByPlugin", byPluginModel)
@@ -127,5 +136,40 @@ public class BuildInfoPanel extends Panel
                 return "Time By Plugin";
             }
         } );
+
+        // by artifact pie chart
+        final IModel<List<PieChartItem>> byArtifactModel = recordsModel.map( list -> {
+
+            // group records by artifact id
+            final Map<Long, List<Record>> byArtifactId =
+                list.stream().collect( Collectors.groupingBy( x -> x.artifactId ) );
+
+            final Map<Long, Artifact> artifactsById =
+                dbService.getArtifactsByIDs( byArtifactId.keySet() ).stream().collect(
+                Collectors.toMap( x->x.id, y -> y ) );
+
+            final long totalDuration = list.stream().mapToLong( x -> x.duration.toMillis() ).sum();
+
+            final Iterator<Color> colorIterator = ColorUtils.getChartColorSupplier();
+            final List<PieChartItem> result = new ArrayList<>();
+            byArtifactId.forEach( (artifactId, records ) -> {
+                final long time = records.stream().mapToLong( x -> x.duration.toMillis() ).sum();
+                final double percDuration = 100.0 * ( time / (double) totalDuration);
+                final Artifact a = artifactsById.get( artifactId );
+                final String label = a.toUIString( records.get( 0 ).artifactVersion );
+                result.add( new PieChartItem( label, colorIterator.next(), percDuration ) );
+            } );
+            return result;
+        });
+
+        add( new PieChart("timeByArtifact", byArtifactModel)
+        {
+            @Override
+            protected String getChartLabel()
+            {
+                return "Time By Artifact";
+            }
+        } );
+
     }
 }

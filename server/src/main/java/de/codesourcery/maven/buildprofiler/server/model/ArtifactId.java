@@ -36,6 +36,11 @@ public record ArtifactId(String groupIdText, String artifactIdText) implements S
     @Override
     public String toString()
     {
+        return getUIString();
+    }
+
+    public String getUIString()
+    {
         return groupIdText+":"+artifactIdText;
     }
 }

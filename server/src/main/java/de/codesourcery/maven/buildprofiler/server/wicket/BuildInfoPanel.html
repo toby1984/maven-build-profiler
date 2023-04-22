@@ -19,21 +19,44 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:wicket="http://wicket.apache.org/">
 
 <wicket:head>
-  <wicket:link>
-  </wicket:link>
+  <style>
+    .buildDesc .label {
+        font-weight: bold;
+    }
+    .mypie {
+        border: 1px solid black;
+    }
+    text.title {
+        font-size:20px;
+        fill: black;
+    }
+  </style>
 </wicket:head>
 
 <body>
 
 <wicket:panel>
 
-  <div wicket:id="label"/>
+  <table>
+  <tr class="buildDesc">
+    <td class="label">Project:</td>
+    <td class="value" wicket:id="projectName" />
+  </tr>
+  <tr class="buildDesc">
+    <td class="label">Branch:</td>
+    <td class="value" wicket:id="branchName" />
+  </tr>
+  <tr class="buildDesc">
+    <td class="label">Host:</td>
+    <td class="value" wicket:id="hostName" />
+  </tr>
+  </table>
 
-  <div wicket:id="timeByPhase" />
-
-  <div wicket:id="timeByPlugin" />
-
-<!--  <div wicket:id="timeByArtifact" />-->
+  <div>
+    <div class="mypie" wicket:id="timeByPhase" />
+    <div class="mypie" wicket:id="timeByPlugin" />
+    <div class="mypie" wicket:id="timeByArtifact" />
+  </div>
 
 </wicket:panel>
 

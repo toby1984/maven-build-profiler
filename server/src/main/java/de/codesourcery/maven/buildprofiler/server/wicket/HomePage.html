@@ -48,6 +48,17 @@
 
 <wicket:extend>
 
+  <wicket:fragment wicket:id="buildInfoPanelFragment">
+    <div>
+      <form wicket:id="dummyForm">
+        <div style="display:flex;flex-grow: 1;justify-content: space-around;margin-top:1rem;margin-bottom:1rem">
+          <button wicket:id="closeButton">Close</button>
+        </div>
+        <div wicket:id="buildInfo" />
+      </form>
+    </div>
+  </wicket:fragment>
+
   <wicket:fragment wicket:id="checkboxFragment">
     <input type="checkbox" wicket:id="checkbox"/>
   </wicket:fragment>

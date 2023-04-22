@@ -33,16 +33,17 @@
     border-radius: 5px;
 }
 
-/*.modal-dialog-overlay {*/
-/*    z-index: 1000;*/
-/*    position: relative;*/
-/*    background-color: white;*/
-/*}*/
+.modal-dialog-overlay {
+    width:100%;
+    height:100%;
+}
 
 .modal-dialog .modal-dialog-content {
     /* flex children */
     display: flex;
     flex-direction: column;
+    width: 60vw;
+    height:100vw;
 }
 
 .modal-dialog-overlay.current-focus-trap .modal-dialog-content {

@@ -480,7 +480,29 @@ public class HomePage extends AbstractBasePage
 
     private void showModalPopup(Build build, AjaxRequestTarget target) {
 
-        dialog.setContent( new BuildInfoPanel( ModalDialog.CONTENT_ID, Model.of(build) ) );
+        final Fragment dialogWithCloseButton = new Fragment( ModalDialog.CONTENT_ID, "buildInfoPanelFragment", HomePage.this ) {
+            @Override
+            protected void onInitialize()
+            {
+                super.onInitialize();
+                final Form<Void> dummyForm = new Form<>( "dummyForm" );
+                add( dummyForm );
+
+                dummyForm.add( new BuildInfoPanel( "buildInfo", Model.of( build ) ) );
+                final AjaxButton button = new AjaxButton( "closeButton" )
+                {
+                    @Override
+                    protected void onSubmit(AjaxRequestTarget target)
+                    {
+                        dialog.close( target );
+                    }
+                };
+                button.setDefaultFormProcessing( false );
+                dummyForm.add( button );
+            }
+        };
+
+        dialog.setContent( dialogWithCloseButton );
         if ( dialog.isOpen() ) {
             target.add( dialog );
         } else {
