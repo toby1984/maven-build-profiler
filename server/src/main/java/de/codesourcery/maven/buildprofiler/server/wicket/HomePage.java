@@ -20,11 +20,11 @@ import de.codesourcery.maven.buildprofiler.server.db.DAO;
 import de.codesourcery.maven.buildprofiler.server.db.DbService;
 import de.codesourcery.maven.buildprofiler.server.model.Build;
 import de.codesourcery.maven.buildprofiler.server.model.Host;
+import de.codesourcery.maven.buildprofiler.server.wicket.components.LinkWithLabel;
+import de.codesourcery.maven.buildprofiler.server.wicket.components.MyModalDialog;
 import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.DataSet;
 import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.DateXYDataItem;
 import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.LineChart;
-import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.NumericXYDataItem;
-import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.XYDataItem;
 import de.codesourcery.maven.buildprofiler.server.wicket.components.datatable.MyDataTable;
 import de.codesourcery.maven.buildprofiler.server.wicket.components.tooltip.TooltipBehaviour;
 import org.apache.commons.lang3.Validate;
@@ -32,6 +32,9 @@ import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.AjaxLink;
 import org.apache.wicket.ajax.markup.html.form.AjaxButton;
 import org.apache.wicket.ajax.markup.html.form.AjaxCheckBox;
+import org.apache.wicket.extensions.ajax.markup.html.modal.ModalDialog;
+import org.apache.wicket.extensions.ajax.markup.html.modal.ModalWindow;
+import org.apache.wicket.extensions.ajax.markup.html.modal.theme.DefaultTheme;
 import org.apache.wicket.extensions.markup.html.repeater.data.grid.ICellPopulator;
 import org.apache.wicket.extensions.markup.html.repeater.data.sort.SortOrder;
 import org.apache.wicket.extensions.markup.html.repeater.data.table.AbstractColumn;
@@ -141,6 +144,7 @@ public class HomePage extends AbstractBasePage
         }
     }
 
+    private MyModalDialog dialog;
     private MyDataTable<Build, TableColumn> dataTable;
     private final MyDataProvider dataProvider = new MyDataProvider();
 
@@ -171,6 +175,12 @@ public class HomePage extends AbstractBasePage
     protected void onInitialize()
     {
         super.onInitialize();
+
+        dialog = new MyModalDialog( "modalWindow" );
+        dialog.add(new DefaultTheme());
+        dialog.trapFocus();
+        dialog.closeOnEscape();
+        add( dialog );
 
         final Form<Void> form = new Form<>( "form" );
         add( form );
@@ -468,18 +478,49 @@ public class HomePage extends AbstractBasePage
         return column( col, func, null , -1 );
     }
 
+    private void showModalPopup(Build build, AjaxRequestTarget target) {
+
+        dialog.setContent( new BuildInfoPanel( ModalDialog.CONTENT_ID, Model.of(build) ) );
+        if ( dialog.isOpen() ) {
+            target.add( dialog );
+        } else {
+            dialog.open( target );
+        }
+    }
+
     private IColumn<Build,TableColumn> column(TableColumn col, SerializableFunction<Build,?> func,SerializableFunction<Build,String> tooltipFunc, int tooltipWidthInPixels)
     {
         if ( tooltipFunc == null )
         {
-            return new LambdaColumn<>( new ResourceModel( "column." + col.name() ), col, func );
+            return new LambdaColumn<>( new ResourceModel( "column." + col.name() ), col, func ) {
+                @Override
+                public void populateItem(Item<ICellPopulator<Build>> item, String componentId, IModel<Build> rowModel)
+                {
+                    final LinkWithLabel<Build> label = new LinkWithLabel<>( componentId, getDataModel( rowModel ), rowModel ) {
+
+                        @Override
+                        protected void onClick(AjaxRequestTarget target, Build modelObject)
+                        {
+                            showModalPopup( modelObject, target );
+                        }
+                    };
+                    item.add( label );
+                }
+            };
         }
         return new LambdaColumn<>( new ResourceModel( "column." + col.name() ), col, func ) {
             @Override
             public void populateItem(Item<ICellPopulator<Build>> item, String componentId, IModel<Build> rowModel)
             {
-                final Label label = new Label( componentId, getDataModel( rowModel ) );
-                label.add( TooltipBehaviour.of( rowModel.map( tooltipFunc ) , tooltipWidthInPixels ) );
+                final LinkWithLabel<Build> label = new LinkWithLabel<>( componentId, getDataModel( rowModel ), rowModel ) {
+
+                    @Override
+                    protected void onClick(AjaxRequestTarget target, Build modelObject)
+                    {
+                        showModalPopup( modelObject, target );
+                    }
+                };
+                label.getLabel().add( TooltipBehaviour.of( rowModel.map( tooltipFunc ) , tooltipWidthInPixels ) );
                 item.add( label );
             }
         };

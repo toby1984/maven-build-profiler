@@ -19,32 +19,21 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:wicket="http://wicket.apache.org/">
 
 <wicket:head>
-  <style>
-    .fastest:not(:hover) {
-        background-color: lightgreen;
-    }
-    .slower:not(:hover) {
-        background-color: orange;
-    }
-    .slowest:not(:hover) {
-        background-color: red;
-    }
-  </style>
+  <wicket:link>
+  </wicket:link>
 </wicket:head>
 
 <body>
 
 <wicket:panel>
 
-  <h2>
-    Comparing by phases
-  </h2>
+  <div wicket:id="label"/>
 
-  <table wicket:id="compareTable" />
+  <div wicket:id="timeByPhase" />
 
-  <form wicket:id="dummy">
-    <button wicket:id="backButton">Back</button>
-  </form>
+  <div wicket:id="timeByPlugin" />
+
+<!--  <div wicket:id="timeByArtifact" />-->
 
 </wicket:panel>
 

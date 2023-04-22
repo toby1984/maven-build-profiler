@@ -43,8 +43,8 @@ var charts = {
         xhr.send();
     },
 
-    linechart : function(elementId) {
-        console.log("Attaching linechart to " + elementId);
+    createChart : function(elementId) {
+        console.log("Attaching chart to " + elementId);
         const elem = document.getElementById(elementId);
         if ( elem )
         {

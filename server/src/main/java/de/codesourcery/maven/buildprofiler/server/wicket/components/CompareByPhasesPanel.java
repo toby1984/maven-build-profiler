@@ -31,15 +31,12 @@ import org.apache.commons.lang3.Validate;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
-import org.apache.wicket.ajax.markup.html.AjaxLink;
 import org.apache.wicket.extensions.markup.html.repeater.data.grid.ICellPopulator;
 import org.apache.wicket.extensions.markup.html.repeater.data.table.IColumn;
 import org.apache.wicket.extensions.markup.html.repeater.data.table.LambdaColumn;
 import org.apache.wicket.extensions.markup.html.repeater.util.SortableDataProvider;
-import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.form.Button;
 import org.apache.wicket.markup.html.form.Form;
-import org.apache.wicket.markup.html.panel.Fragment;
 import org.apache.wicket.markup.html.panel.Panel;
 import org.apache.wicket.markup.repeater.Item;
 import org.apache.wicket.model.IModel;
@@ -214,41 +211,6 @@ public class CompareByPhasesPanel extends Panel implements IWicketUtils
             {
                 return Model.of( object );
             }
-    }
-
-    private abstract class LinkWithLabel<T> extends Fragment
-    {
-        private final IModel<T> dataModel;
-        private final IModel<?> displayModel;
-        private final Label label;
-
-        public LinkWithLabel(String id,IModel<?> displayModel, IModel<T> dataModel)
-        {
-            super( id, "linkWithLabel", CompareByPhasesPanel.this );
-            Validate.notNull( displayModel, "displayModel must not be null" );
-            Validate.notNull( dataModel, "model must not be null" );
-            this.dataModel = dataModel;
-            this.displayModel = displayModel;
-
-            final AjaxLink<T> link = new AjaxLink<>("link", dataModel ) {
-
-                @Override
-                public void onClick(AjaxRequestTarget target)
-                {
-                    LinkWithLabel.this.onClick( target, getModelObject() );
-                }
-            };
-            add( link );
-            label = new Label( "label", displayModel );
-            link.add( label );
-        }
-
-        public Label getLabel()
-        {
-            return label;
-        }
-
-        protected abstract void onClick(AjaxRequestTarget target, T modelObject);
     }
 
     public CompareByPhasesPanel(String id, IModel<List<Build>> toCompare, DAO.SearchCriteria criteria)
