@@ -15,6 +15,7 @@
  */
 package de.codesourcery.maven.buildprofiler.extension;
 
+import de.codesourcery.maven.buildprofiler.shared.ArtifactCoords;
 import de.codesourcery.maven.buildprofiler.shared.Constants;
 import org.apache.commons.lang3.Validate;
 import de.codesourcery.maven.buildprofiler.shared.Utils;
@@ -43,13 +44,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -82,23 +77,9 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
 
     private Logger log;
 
-    protected record ArtifactCoords(String groupId, String artifactId, String version)
-    {
-        protected ArtifactCoords
-        {
-            Validate.notBlank( groupId, "groupId must not be null or blank");
-            Validate.notBlank( artifactId, "artifactId must not be null or blank");
-            Validate.notBlank( version, "version must not be null or blank");
-        }
-
-        public String getAsString() {
-            return groupId+":"+artifactId+":"+version;
-        }
-    }
-
-     protected record ExecutionRecord(ArtifactCoords artifactBeingBuild,
-                                      ArtifactCoords plugin,
-                                      String phase, long startEpochMillis, long endEpochMillis)
+    protected record ExecutionRecord(ArtifactCoords artifactBeingBuild,
+                                     ArtifactCoords plugin,
+                                     String phase, long startEpochMillis, long endEpochMillis)
      {
         protected ExecutionRecord
         {
@@ -406,6 +387,40 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
         }, REPORTED_ENV_VARS::contains, json );
 
         json.append("}, ");
+        // gather unique plugin/build artifact coordinates
+        // and store them as a JSON array. That way we can
+        // reference the array index instead of repeating
+        // the same strings over and over.
+        final Map<String, Integer> artifactIndexByCoords = new HashMap<>();
+        final List<ArtifactCoords> coords = new ArrayList<>();
+        final Iterator<Integer> intIt = new Iterator<>()
+        {
+            private int value;
+            @Override public boolean hasNext() {return true;}
+            @Override public Integer next() {return value++;}
+        };
+        records.stream().map(x -> List.of(x.artifactBeingBuild(), x.plugin())).flatMap(Collection::stream)
+            .distinct().forEach(artifact ->
+            {
+                coords.add(artifact);
+                artifactIndexByCoords.put(artifact.getAsString(), intIt.next());
+            });
+
+        json.append( "\"coords\"" ).append( " : [ " );
+        for (Iterator<ArtifactCoords> iterator = coords.iterator(); iterator.hasNext(); )
+        {
+            final ArtifactCoords c = iterator.next();
+            json.append("{");
+            json.append("\"groupId\" : ").append(Utils.jsonString(c.groupId())).append(",");
+            json.append("\"artifactId\" : ").append(Utils.jsonString(c.artifactId())).append(",");
+            json.append("\"version\" : ").append(Utils.jsonString(c.version()));
+            json.append("}");
+            if ( iterator.hasNext() ) {
+                json.append(",");
+            }
+        }
+        json.append( "],");
+
         // records
         json.append( "\"records\"" ).append( " : [ " );
 
@@ -413,13 +428,14 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
         {
             final ExecutionRecord record = it.next();
             json.append( "{ " );
-            json.append( "\"groupId\" : " ).append( Utils.jsonString( record.artifactBeingBuild().groupId ) ).append( ", " );
-            json.append( "\"artifactId\" : " ).append( Utils.jsonString( record.artifactBeingBuild().artifactId ) ).append( ", " );
-            json.append( "\"version\" : " ).append( Utils.jsonString( record.artifactBeingBuild().version ) ).append( ", " );
+
+            int idx = artifactIndexByCoords.get(record.artifactBeingBuild().getAsString());
+            json.append("\"artifactIdx\" : ").append(idx).append(", ");
+
             // --
-            json.append( "\"pluginGroupId\" : " ).append( Utils.jsonString( record.plugin().groupId() ) ).append( ", " );
-            json.append( "\"pluginArtifactId\" : " ).append( Utils.jsonString( record.plugin().artifactId() ) ).append( ", " );
-            json.append( "\"pluginVersion\" : " ).append( Utils.jsonString( record.plugin().version() ) ).append( ", " );
+            idx = artifactIndexByCoords.get(record.plugin().getAsString());
+            json.append( "\"pluginIdx\" : " ).append(idx).append( ", " );
+
             // --
             json.append( "\"phase\" : " ).append( Utils.jsonString( record.phase() ) ).append( ", " );
             json.append( "\"startMillis\" : " ).append( record.startEpochMillis ).append( ", " );

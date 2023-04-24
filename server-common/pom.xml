@@ -46,7 +46,12 @@
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
     </dependency>
-    
+
+    <dependency>
+        <groupId>de.code-sourcery.maven.buildprofiler</groupId>
+        <artifactId>maven-build-profiler-shared</artifactId>
+    </dependency>
+
   </dependencies>
 
   <build>

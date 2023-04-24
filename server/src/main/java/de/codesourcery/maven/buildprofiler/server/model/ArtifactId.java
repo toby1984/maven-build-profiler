@@ -15,17 +15,30 @@
  */
 package de.codesourcery.maven.buildprofiler.server.model;
 
+import de.codesourcery.maven.buildprofiler.shared.ArtifactCoords;
 import org.apache.commons.lang3.Validate;
 
 import java.io.Serializable;
 import java.util.Objects;
 
+/**
+ * An artifacts group ID and artifact ID.
+ *
+ * @param groupIdText
+ * @param artifactIdText
+ *
+ * @author tobias.gierke@code-sourcery.de
+ */
 public record ArtifactId(String groupIdText, String artifactIdText) implements Serializable
 {
     public ArtifactId
     {
         Validate.notBlank( groupIdText, "groupIdText must not be null or blank");
         Validate.notBlank( artifactIdText, "artifactIdText must not be null or blank");
+    }
+
+    public static ArtifactId of(ArtifactCoords coords) {
+        return new ArtifactId(coords.groupId(), coords.artifactId());
     }
 
     public boolean matches(Artifact art) {

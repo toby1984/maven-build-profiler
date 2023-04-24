@@ -18,6 +18,7 @@ package de.codesourcery.maven.buildprofiler.common;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import de.codesourcery.maven.buildprofiler.shared.ArtifactCoords;
 
 import java.util.List;
 import java.util.Map;
@@ -64,19 +65,25 @@ public class BuildResult
     public Map<String,String> environment;
 
     @JsonProperty(required = true)
+    public List<ArtifactCoords> coords;
+
+    @JsonProperty(required = true)
     public List<Record> records;
 
     public static class Record {
-        public String groupId;
-        public String artifactId;
-        public String version;
-        // --
-        public String pluginGroupId;
-        public String pluginArtifactId;
-        public String pluginVersion;
+        public int artifactIdx;
+        public int pluginIdx;
         // --
         public String phase;
         public long startMillis;
         public long endMillis;
+
+        public ArtifactCoords artifact(BuildResult r) {
+            return r.coords.get(artifactIdx);
+        }
+
+        public ArtifactCoords plugin(BuildResult r) {
+            return r.coords.get(pluginIdx);
+        }
     }
 }

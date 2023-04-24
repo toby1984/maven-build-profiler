@@ -18,11 +18,11 @@ package de.codesourcery.maven.buildprofiler.extension;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.codesourcery.maven.buildprofiler.common.BuildResult;
+import de.codesourcery.maven.buildprofiler.shared.ArtifactCoords;
 import org.assertj.core.data.Offset;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -31,9 +31,9 @@ public class DeserializationTest
     @Test
     void test() throws JsonProcessingException
     {
-        final MyExtension.ArtifactCoords artifact1 = new MyExtension.ArtifactCoords("a1-group", "a1-artifact", "1.0-a1-SNAPSHOT");
-        final MyExtension.ArtifactCoords plugin1= new MyExtension.ArtifactCoords("p1-group", "p1-artifact", "1.0-p1-SNAPSHOT");
-        final MyExtension.ArtifactCoords plugin2= new MyExtension.ArtifactCoords("p2-group", "p2-artifact", "1.0-p2-SNAPSHOT");
+        final ArtifactCoords artifact1 = new ArtifactCoords("a1-group", "a1-artifact", "1.0-a1-SNAPSHOT");
+        final ArtifactCoords plugin1= new ArtifactCoords("p1-group", "p1-artifact", "1.0-p1-SNAPSHOT");
+        final ArtifactCoords plugin2= new ArtifactCoords("p2-group", "p2-artifact", "1.0-p2-SNAPSHOT");
 
         final long now = 12361582361L;
         final List<MyExtension.ExecutionRecord> list = List.of(
@@ -70,39 +70,47 @@ public class DeserializationTest
 
         BuildResult.Record record = value.records.get(0);
 
-        assertThat( record.artifactId ).isEqualTo( artifact1.artifactId() );
-        assertThat( record.groupId ).isEqualTo( artifact1.groupId());
-        assertThat( record.version ).isEqualTo( artifact1.version() );
+        ArtifactCoords coords = record.artifact(value);
 
-        assertThat( record.pluginArtifactId ).isEqualTo( plugin1.artifactId() );
-        assertThat( record.pluginGroupId ).isEqualTo( plugin1.groupId());
-        assertThat( record.pluginVersion ).isEqualTo( plugin1.version() );
+        assertThat( coords.artifactId() ).isEqualTo( artifact1.artifactId() );
+        assertThat( coords.groupId() ).isEqualTo( artifact1.groupId());
+        assertThat( coords.version() ).isEqualTo( artifact1.version() );
+
+        coords = record.plugin(value);
+        assertThat( coords.artifactId() ).isEqualTo( plugin1.artifactId() );
+        assertThat( coords.groupId() ).isEqualTo( plugin1.groupId());
+        assertThat( coords.version() ).isEqualTo( plugin1.version() );
 
         assertThat( record.phase ).isEqualTo( "clean" );
         assertThat( record.startMillis ).isEqualTo( list.get( 0 ).startEpochMillis() );
         assertThat( record.endMillis ).isEqualTo( list.get( 0 ).endEpochMillis() );
 
         record = value.records.get(1);
-        assertThat( record.artifactId ).isEqualTo( artifact1.artifactId() );
-        assertThat( record.groupId ).isEqualTo( artifact1.groupId());
-        assertThat( record.version ).isEqualTo( artifact1.version() );
 
-        assertThat( record.pluginArtifactId ).isEqualTo( plugin2.artifactId() );
-        assertThat( record.pluginGroupId ).isEqualTo( plugin2.groupId());
-        assertThat( record.pluginVersion ).isEqualTo( plugin2.version() );
+        coords = record.artifact(value);
+        assertThat( coords.artifactId() ).isEqualTo( artifact1.artifactId() );
+        assertThat( coords.groupId() ).isEqualTo( artifact1.groupId());
+        assertThat( coords.version() ).isEqualTo( artifact1.version() );
+
+        coords = record.plugin(value);
+        assertThat( coords.artifactId() ).isEqualTo( plugin2.artifactId() );
+        assertThat( coords.groupId() ).isEqualTo( plugin2.groupId());
+        assertThat( coords.version() ).isEqualTo( plugin2.version() );
 
         assertThat( record.phase ).isEqualTo( "process-sources" );
         assertThat( record.startMillis ).isEqualTo( list.get( 1 ).startEpochMillis() );
         assertThat( record.endMillis ).isEqualTo( list.get( 1 ).endEpochMillis() );
 
-        record = value.records.get(1);
-        assertThat( record.artifactId ).isEqualTo( artifact1.artifactId() );
-        assertThat( record.groupId ).isEqualTo( artifact1.groupId());
-        assertThat( record.version ).isEqualTo( artifact1.version() );
+        record = value.records.get(2);
+        coords = record.artifact(value);
+        assertThat( coords.artifactId() ).isEqualTo( artifact1.artifactId() );
+        assertThat( coords.groupId() ).isEqualTo( artifact1.groupId());
+        assertThat( coords.version() ).isEqualTo( artifact1.version() );
 
-        assertThat( record.pluginArtifactId ).isEqualTo( plugin2.artifactId() );
-        assertThat( record.pluginGroupId ).isEqualTo( plugin2.groupId());
-        assertThat( record.pluginVersion ).isEqualTo( plugin2.version() );
+        coords = record.plugin(value);
+        assertThat( coords.artifactId() ).isEqualTo( plugin2.artifactId() );
+        assertThat( coords.groupId() ).isEqualTo( plugin2.groupId());
+        assertThat( coords.version() ).isEqualTo( plugin2.version() );
 
         assertThat( record.phase ).isEqualTo( "process-sources" );
         assertThat( record.startMillis ).isEqualTo( list.get( 2 ).startEpochMillis() );

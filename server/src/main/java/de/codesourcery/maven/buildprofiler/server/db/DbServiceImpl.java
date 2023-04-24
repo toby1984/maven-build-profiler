@@ -25,6 +25,7 @@ import de.codesourcery.maven.buildprofiler.server.model.Build;
 import de.codesourcery.maven.buildprofiler.server.model.Host;
 import de.codesourcery.maven.buildprofiler.server.model.LifecyclePhase;
 import de.codesourcery.maven.buildprofiler.server.model.Record;
+import de.codesourcery.maven.buildprofiler.shared.ArtifactCoords;
 import org.apache.commons.lang3.Validate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -254,8 +255,8 @@ public class DbServiceImpl implements DbService
         final Set<ArtifactId> artifactIds = new HashSet<>();
         for ( BuildResult.Record record : data.records )
         {
-            artifactIds.add( new ArtifactId( record.groupId, record.artifactId ) );
-            artifactIds.add( new ArtifactId( record.pluginGroupId, record.pluginArtifactId ) );
+            artifactIds.add(ArtifactId.of(record.artifact(data)));
+            artifactIds.add(ArtifactId.of(record.plugin(data)));
             requiredPhases.add( record.phase );
         }
 
@@ -298,14 +299,18 @@ public class DbServiceImpl implements DbService
             rec.buildId = b.id;
             rec.phaseId = existingPhases.get( r.phase ).phaseId;
 
-            final Artifact pluginArtifact = found.get( new ArtifactId( r.pluginGroupId, r.pluginArtifactId ) );
+            ArtifactCoords coords = r.plugin(data);
+            ArtifactId id = ArtifactId.of(coords);
+            final Artifact pluginArtifact = found.get(id);
             rec.pluginArtifactId = pluginArtifact.id;
-            rec.pluginVersion = r.pluginVersion;
+            rec.pluginVersion = coords.version();
 
-            final Artifact artifact = found.get( new ArtifactId( r.groupId, r.artifactId ) );
+            coords = r.artifact(data);
+            id = ArtifactId.of(coords);
+            final Artifact artifact = found.get(id);
             rec.artifactId = artifact.id;
+            rec.artifactVersion = coords.version();
 
-            rec.artifactVersion = r.version;
             rec.startTime = Instant.ofEpochMilli( r.startMillis ).atZone( ZoneId.systemDefault() );
             rec.endTime = Instant.ofEpochMilli( r.endMillis ).atZone( ZoneId.systemDefault() );
             records.add( rec );

@@ -15,6 +15,7 @@
  */
 package de.codesourcery.maven.buildprofiler.extension;
 
+import de.codesourcery.maven.buildprofiler.shared.ArtifactCoords;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -26,9 +27,9 @@ class MyExtensionTest
     @Test
     void testJsonGeneration()
     {
-        final MyExtension.ArtifactCoords artifact = coords("a-group", "a-artifact", "1.0-a-SNAPSHOT");
-        final MyExtension.ArtifactCoords plugin1= coords("p1-group", "p1-artifact", "1.0-p1-SNAPSHOT");
-        final MyExtension.ArtifactCoords plugin2= coords("p2-group", "p2-artifact", "1.0-p2-SNAPSHOT");
+        final ArtifactCoords artifact = coords("a-group", "a-artifact", "1.0-a-SNAPSHOT");
+        final ArtifactCoords plugin1= coords("p1-group", "p1-artifact", "1.0-p1-SNAPSHOT");
+        final ArtifactCoords plugin2= coords("p2-group", "p2-artifact", "1.0-p2-SNAPSHOT");
 
         long now = 1682321652229L;
 
@@ -44,7 +45,7 @@ class MyExtensionTest
         System.out.println(json);
     }
 
-    private static MyExtension.ArtifactCoords coords(String groupId, String artifactId, String version) {
-        return new MyExtension.ArtifactCoords(groupId, artifactId, version);
+    private static ArtifactCoords coords(String groupId, String artifactId, String version) {
+        return new ArtifactCoords(groupId, artifactId, version);
     }
 }
