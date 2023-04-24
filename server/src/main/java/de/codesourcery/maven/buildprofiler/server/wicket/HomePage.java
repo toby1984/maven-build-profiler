@@ -27,11 +27,16 @@ import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.DateX
 import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.LineChart;
 import de.codesourcery.maven.buildprofiler.server.wicket.components.datatable.MyDataTable;
 import de.codesourcery.maven.buildprofiler.server.wicket.components.tooltip.TooltipBehaviour;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
+import org.apache.wicket.ajax.AjaxEventBehavior;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.AjaxLink;
 import org.apache.wicket.ajax.markup.html.form.AjaxButton;
 import org.apache.wicket.ajax.markup.html.form.AjaxCheckBox;
+import org.apache.wicket.extensions.ajax.markup.html.autocomplete.AutoCompleteSettings;
+import org.apache.wicket.extensions.ajax.markup.html.autocomplete.AutoCompleteTextField;
+import org.apache.wicket.extensions.ajax.markup.html.autocomplete.DefaultCssAutoCompleteTextField;
 import org.apache.wicket.extensions.ajax.markup.html.modal.ModalDialog;
 import org.apache.wicket.extensions.ajax.markup.html.modal.ModalWindow;
 import org.apache.wicket.extensions.ajax.markup.html.modal.theme.DefaultTheme;
@@ -57,16 +62,22 @@ import org.apache.wicket.model.LoadableDetachableModel;
 import org.apache.wicket.model.Model;
 import org.apache.wicket.model.ResourceModel;
 import org.apache.wicket.spring.injection.annot.SpringBean;
+import org.apache.wicket.util.convert.ConversionException;
+import org.apache.wicket.util.convert.IConverter;
 import org.danekja.java.util.function.serializable.SerializableFunction;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 public class HomePage extends AbstractBasePage
 {
@@ -171,6 +182,26 @@ public class HomePage extends AbstractBasePage
         return criteria;
     }
 
+    private enum MyObj {
+        A("aab"),
+        B("aaac"),
+        C("aaaad");
+
+        private final String text;
+
+        MyObj(String text)
+        {
+            this.text = text;
+        }
+
+        public static Optional<MyObj> findByText(String txt) {
+            if ( StringUtils.isBlank( txt ) ) {
+                return Optional.empty();
+            }
+            return Arrays.stream( MyObj.values() ).filter( txt::equals ).findFirst();
+        }
+    }
+
     @Override
     protected void onInitialize()
     {
@@ -184,6 +215,60 @@ public class HomePage extends AbstractBasePage
 
         final Form<Void> form = new Form<>( "form" );
         add( form );
+
+        // TODO: Remove debug code
+        final Model<MyObj> m = new Model<>();
+
+
+        final AutoCompleteSettings s = new AutoCompleteSettings();
+        final DefaultCssAutoCompleteTextField<MyObj> txtField = new DefaultCssAutoCompleteTextField<>(
+            "autocomplete", m )
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <C> IConverter<C> getConverter(Class<C> type)
+            {
+                return (IConverter<C>) new IConverter<MyObj>()
+                {
+                    @Override
+                    public MyObj convertToObject(String value, Locale locale) throws ConversionException
+                    {
+                        return MyObj.findByText( value ).orElseThrow( () -> new ConversionException( "error" ) );
+                    }
+
+                    @Override
+                    public String convertToString(MyObj value, Locale locale)
+                    {
+                        return value == null ? null : value.text;
+                    }
+                };
+            }
+
+            @Override
+            protected Iterator<MyObj> getChoices(String input)
+            {
+                final Predicate<MyObj> predicate;
+                if ( StringUtils.isBlank(input))
+                {
+                    predicate = x -> true;
+                } else {
+                    predicate = x -> x.text.startsWith( input );
+                }
+                return Arrays.stream( MyObj.values() ).filter( predicate )
+                    .sorted( (a, b) -> a.text.compareToIgnoreCase( b.text ) )
+                    .toList().iterator();
+            }
+        };
+        txtField.setType( MyObj.class );
+        txtField.add( new AjaxEventBehavior("blur")
+        {
+            @Override
+            protected void onEvent(AjaxRequestTarget target)
+            {
+                System.out.println( "==== Blur, current value = " + m.getObject() );
+            }
+        } );
+        form.add( txtField );
 
         // table container
         final WebMarkupContainer tableContainer = new WebMarkupContainer( "tableContainer" );

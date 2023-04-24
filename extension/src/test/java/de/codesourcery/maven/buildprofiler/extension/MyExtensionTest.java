@@ -19,6 +19,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 class MyExtensionTest
 {
     @Test
@@ -28,15 +30,17 @@ class MyExtensionTest
         final MyExtension.ArtifactCoords plugin1= coords("p1-group", "p1-artifact", "1.0-p1-SNAPSHOT");
         final MyExtension.ArtifactCoords plugin2= coords("p2-group", "p2-artifact", "1.0-p2-SNAPSHOT");
 
+        long now = 1682321652229L;
+
         final List<MyExtension.ExecutionRecord> list = List.of(
-            new MyExtension.ExecutionRecord( artifact, plugin1, "clean", 23 ),
-            new MyExtension.ExecutionRecord( artifact, plugin2, "compile", 25 )
+            new MyExtension.ExecutionRecord( artifact, plugin1, "clean", now, now + 10 ),
+            new MyExtension.ExecutionRecord( artifact, plugin2, "compile", now + 15, now + 20 )
         );
         final MyExtension instance = new MyExtension();
         instance.gitHash = "deadbeef";
         instance.maxConcurrency.set(123);
-        MyExtension.mojoStartTime.set(System.currentTimeMillis() - 1000);
-        final String json = MyExtension.getJSONRequest( list, instance );
+        MyExtension.startupTimestamp = now - 1000;
+        final String json = MyExtension.getJSONRequest( list, instance , now );
         System.out.println(json);
     }
 

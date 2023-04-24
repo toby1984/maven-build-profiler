@@ -167,7 +167,7 @@ public class CompareByPhasesPanel extends Panel implements IWicketUtils
             {
                 if ( data == null ) {
                     final Map<Long, List<Record>> recordsByBuildID =
-                        db.getRecords( model.getObject().stream().map( x -> x.id ).collect( Collectors.toSet() ) );
+                        db.getRecords( model.getObject().stream().map( x -> x.id ).collect( Collectors.toSet() ) , DbService.Grouping.PHASE);
 
                     // gather all possible phases
                     final Set<Long> phaseIDs = recordsByBuildID.values().stream()
@@ -184,7 +184,7 @@ public class CompareByPhasesPanel extends Panel implements IWicketUtils
                             // sum duration of all artifacts for the given phase (if possible)
                             final List<Record> records = recordsByBuildID.get( build.id );
                             final long[] result = records.stream().filter( r -> r.phaseId == phase.phaseId )
-                                .mapToLong( x -> x.duration.toMillis() ).toArray();
+                                .mapToLong( x -> x.duration().toMillis() ).toArray();
 
                             if ( result.length > 0 )
                             {

@@ -139,7 +139,8 @@ let chart = new frappe.Chart("#chart", {
                 json.append( "}, " ); // end data
 
                 json.append( "\"title\" : %s ,".formatted( Utils.jsonString( getChartLabel() )) );
-                json.append( "\"type\" : \"pie\"," );
+                json.append( "\"type\" : \"percentage\"," );
+                json.append( "\"maxSlices\" : " ).append( items.size()+1 ).append( "," );
                 json.append( "\"colors\" : [ ");
 
                 for ( Iterator<PieChartItem> it = items.iterator(); it.hasNext(); )

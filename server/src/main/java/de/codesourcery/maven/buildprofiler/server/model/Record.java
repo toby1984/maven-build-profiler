@@ -15,8 +15,18 @@
  */
 package de.codesourcery.maven.buildprofiler.server.model;
 
+import de.codesourcery.maven.buildprofiler.server.LongInterval;
+import org.apache.commons.lang3.Validate;
+
 import java.io.Serializable;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class Record implements Serializable
 {
@@ -27,5 +37,69 @@ public class Record implements Serializable
     public String pluginVersion;
     public long artifactId;
     public String artifactVersion;
-    public Duration duration;
+    public ZonedDateTime startTime;
+    public ZonedDateTime endTime;
+
+    // transient, calculated duration as result of Interval.merge() operation when grouping by phase/plugin/artifact
+    private long durationMillis;
+
+    public Duration duration() {
+        if ( durationMillis != 0 ) {
+            return Duration.ofMillis( durationMillis );
+        }
+        return Duration.ofMillis( endTime.toInstant().toEpochMilli() - startTime.toInstant().toEpochMilli() );
+    }
+
+    public void setTime(ZonedDateTime start, Duration interval)
+    {
+        setTime( start, start.plus( interval ) );
+    }
+
+    public void setTime(ZonedDateTime start, ZonedDateTime end) {
+        Validate.isTrue( start.compareTo( end ) <= 0 );
+        this.startTime = start;
+        this.endTime = end;
+    }
+
+    public void setTime(long start, long end) {
+        Validate.isTrue( start <= end );
+        this.startTime = Instant.ofEpochMilli( start ).atZone( ZoneId.systemDefault() );
+        this.endTime = Instant.ofEpochMilli( end ).atZone( ZoneId.systemDefault() );
+    }
+
+    public void setDurationMillis(long durationMillis)
+    {
+        Validate.isTrue( durationMillis >= 0 );
+        this.durationMillis = durationMillis;
+    }
+
+    public long startTimeMillis() {
+        return startTime.toInstant().toEpochMilli();
+    }
+
+    public long endTimeMillis() {
+        return endTime.toInstant().toEpochMilli();
+    }
+
+    public static Optional<Duration> wallClockTime(List<Record> records) {
+        Validate.notNull( records, "records must not be null" );
+        return wallClockTimeForIntervals( records.stream().map( x -> LongInterval.of( x.startTimeMillis(), x.endTimeMillis() ) ).collect( Collectors.toList() ) );
+    }
+
+    static Optional<Duration> wallClockTimeForIntervals(List<LongInterval> intervals)
+    {
+        if ( intervals.isEmpty() ) {
+            return Optional.empty();
+        }
+        final List<LongInterval> reduced = LongInterval.mergeIfPossible( intervals );
+
+        final long millis = reduced.stream().mapToLong( LongInterval::length ).sum();
+        return Optional.ofNullable( Duration.ofMillis( millis ) );
+    }
+
+    @Override
+    public String toString()
+    {
+        return "duration: " + duration().toMillis() + " ms";
+    }
 }

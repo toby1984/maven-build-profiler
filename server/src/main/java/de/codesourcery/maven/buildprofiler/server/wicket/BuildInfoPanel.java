@@ -15,6 +15,7 @@
  */
 package de.codesourcery.maven.buildprofiler.server.wicket;
 
+import de.codesourcery.maven.buildprofiler.server.LongInterval;
 import de.codesourcery.maven.buildprofiler.server.db.DbService;
 import de.codesourcery.maven.buildprofiler.server.model.Artifact;
 import de.codesourcery.maven.buildprofiler.server.model.Build;
@@ -30,10 +31,14 @@ import org.apache.wicket.model.LoadableDetachableModel;
 import org.apache.wicket.spring.injection.annot.SpringBean;
 
 import java.awt.Color;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class BuildInfoPanel extends Panel implements IWicketUtils
@@ -79,10 +84,11 @@ public class BuildInfoPanel extends Panel implements IWicketUtils
             final Iterator<Color> colorIterator = ColorUtils.getChartColorSupplier();
             final List<PieChartItem> result = new ArrayList<>();
 
-            final long totalDuration = list.stream().mapToLong( x -> x.duration.toMillis() ).sum();
+            final long totalDuration =
+                byPhaseID.values().stream().map( Record::wallClockTime ).flatMap( Optional::stream ).mapToLong( Duration::toMillis ).sum();
 
             byPhaseID.forEach( (phaseId, records) -> {
-                final long time = records.stream().mapToLong( x -> x.duration.toMillis() ).sum();
+                final long time = Record.wallClockTime( records ).orElse( Duration.ZERO ).toMillis();
                 final double percDuration = 100.0 * ( time / (double) totalDuration);
                 final LifecyclePhase phase = phasesByID.get( phaseId );
                 result.add( new PieChartItem( phase.name, colorIterator.next(), percDuration ) );
@@ -108,12 +114,13 @@ public class BuildInfoPanel extends Panel implements IWicketUtils
             final Map<Long, Artifact> pluginsByArtifactId = dbService.getArtifactsByIDs( byPluginArtifactId.keySet() ).stream().collect(
                 Collectors.toMap( x->x.id, y -> y ) );
 
-            final long totalDuration = list.stream().mapToLong( x -> x.duration.toMillis() ).sum();
+            final long totalDuration =
+                byPluginArtifactId.values().stream().map( Record::wallClockTime ).flatMap( Optional::stream ).mapToLong( Duration::toMillis ).sum();
 
             final Iterator<Color> colorIterator = ColorUtils.getChartColorSupplier();
             final List<PieChartItem> result = new ArrayList<>();
             byPluginArtifactId.forEach( (pluginArtifactId, records) -> {
-                final long time = records.stream().mapToLong( x -> x.duration.toMillis() ).sum();
+                final long time = Record.wallClockTime( records ).orElse( Duration.ZERO ).toMillis();
                 final double percDuration = 100.0 * (time / (double) totalDuration);
                 final Record r = records.get( 0 );
                 final Artifact plugin = pluginsByArtifactId.get( r.pluginArtifactId );
@@ -148,13 +155,16 @@ public class BuildInfoPanel extends Panel implements IWicketUtils
                 dbService.getArtifactsByIDs( byArtifactId.keySet() ).stream().collect(
                 Collectors.toMap( x->x.id, y -> y ) );
 
-            final long totalDuration = list.stream().mapToLong( x -> x.duration.toMillis() ).sum();
+            final long totalDuration =
+                byArtifactId.values().stream().map( Record::wallClockTime ).flatMap( Optional::stream ).mapToLong( Duration::toMillis ).sum();
 
             final Iterator<Color> colorIterator = ColorUtils.getChartColorSupplier();
             final List<PieChartItem> result = new ArrayList<>();
+            final AtomicReference<Double> sum = new AtomicReference<>(0.0);
             byArtifactId.forEach( (artifactId, records ) -> {
-                final long time = records.stream().mapToLong( x -> x.duration.toMillis() ).sum();
+                final long time = Record.wallClockTime( records ).orElse( Duration.ZERO ).toMillis();
                 final double percDuration = 100.0 * ( time / (double) totalDuration);
+                sum.set( sum.get() + percDuration );
                 final Artifact a = artifactsById.get( artifactId );
                 final String label = a.toUIString( records.get( 0 ).artifactVersion );
                 result.add( new PieChartItem( label, colorIterator.next(), percDuration ) );

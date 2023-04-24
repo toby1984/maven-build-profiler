@@ -44,7 +44,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -53,10 +52,10 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 @Named("track-build-times")
 @Singleton
@@ -71,8 +70,8 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
 
     private static final Set<String> REPORTED_ENV_VARS = Set.of("JAVA_HOME", "HOME", "JAVA_OPTS", "MAVEN_OPTS","USER","CLASSPATH","MAVEN_HOME");
 
-    protected static long profilingStartTime = System.currentTimeMillis();
-    protected static final ThreadLocal<Long> mojoStartTime = new ThreadLocal<>();
+    protected static long startupTimestamp = System.currentTimeMillis();
+    protected static final ThreadLocal<Long> mojoStartNanos = new ThreadLocal<>();
 
     public static final String CONFIG_PROP_ENABLED = "buildTimeTrackingEnabled";
     public static final String CONFIG_PROP_PROJECT = "buildTimeTrackingProject";
@@ -98,18 +97,22 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
     }
 
      protected record ExecutionRecord(ArtifactCoords artifactBeingBuild,
-                                     ArtifactCoords plugin,
-                                     String phase, long executionTimeMillis) {
+                                      ArtifactCoords plugin,
+                                      String phase, long startEpochMillis, long endEpochMillis)
+     {
         protected ExecutionRecord
         {
             Validate.notNull(artifactBeingBuild, "artifactBeingBuild must not be null");
             Validate.notNull(plugin, "plugin must not be null");
             Validate.notBlank( phase, "phase must not be null or blank");
-            Validate.isTrue(executionTimeMillis >= 0, "execution time must be positive");
+            Validate.isTrue( startEpochMillis <= endEpochMillis, "execution time must be positive");
         }
     }
 
     private final AtomicBoolean initialized = new AtomicBoolean( false );
+
+    // timestamp relative to which all execution times will be recorded
+    private final AtomicLong initialNanos = new AtomicLong();
 
     // configuration properties from pom.xml
     private volatile boolean extEnabled = true;
@@ -168,6 +171,8 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
     {
         if ( initialized.compareAndSet( false,true ) )
         {
+            initialNanos.set( System.nanoTime() );
+
             log.debug("Trying to find out current GIT hash");
             gitHash = getCurrentGitHash(currentProject.getBasedir()).orElse(null);
             log.debug("Got GIT hash " + gitHash);
@@ -239,8 +244,7 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
                     if ( log.isDebugEnabled() ) {
                         log.debug("Mojo started.");
                     }
-                    final long now = System.currentTimeMillis();
-                    mojoStartTime.set( now );
+                    mojoStartNanos.set( System.nanoTime() - initialNanos.get() );
                     final int current = concurrency.incrementAndGet();
                     maxConcurrency.getAndUpdate(actual -> Math.max(actual, current));
                 }
@@ -249,15 +253,19 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
                     if ( log.isDebugEnabled() ) {
                         log.debug("Mojo succeeed.");
                     }
+                    final long endNanos = System.nanoTime() - initialNanos.get();
                     concurrency.decrementAndGet();
-                    final long elapsedMillis = System.currentTimeMillis() - mojoStartTime.get();
                     final Artifact a = r.getProject().getArtifact();
                     synchronized (records)
                     {
                         final ArtifactCoords buildArtifact = new ArtifactCoords(a.getGroupId(), a.getArtifactId(), a.getVersion());
                         final Plugin p = exec.getPlugin();
                         final ArtifactCoords pluginArtifact = new ArtifactCoords(p.getGroupId(), p.getArtifactId(), p.getVersion());
-                        records.add(new ExecutionRecord(buildArtifact, pluginArtifact, phase, elapsedMillis));
+
+                        // convert to epoch millis relative to start time
+                        final long startMillis = startupTimestamp + ( mojoStartNanos.get() / 1_000_000 );
+                        final long endMillis = startupTimestamp + ( endNanos / 1_000_000 );
+                        records.add( new ExecutionRecord( buildArtifact, pluginArtifact, phase, startMillis, endMillis ) );
                     }
                 }
             }
@@ -276,7 +284,7 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
             return;
         }
 
-        final String json = getJSONRequest( records, this);
+        final String json = getJSONRequest( records, this, System.currentTimeMillis() );
         if ( log.isDebugEnabled() ) {
             log.debug("JSON: " + json);
         }
@@ -332,14 +340,21 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
         }
     }
 
-    public static String getJSONRequest(List<ExecutionRecord> records, MyExtension instance)
+    /**
+     *
+     * @param records
+     * @param instance
+     * @param timestampNow timestamp in millis since epoch
+     * @return
+     */
+    public static String getJSONRequest(List<ExecutionRecord> records, MyExtension instance, long timestampNow)
     {
         final StringBuilder json = new StringBuilder();
 
         json.append( "{" );
         json.append( "\"jsonSyntaxVersion\" : " ).append( Constants.JSON_SYNTAX_VERSION ).append( ", " );
-        json.append( "\"buildStartTime\" : " ).append( System.currentTimeMillis() ).append( ", " );
-        final long buildTimeMillis = System.currentTimeMillis() - profilingStartTime;
+        json.append( "\"buildStartTime\" : " ).append( startupTimestamp ).append( ", " );
+        final long buildTimeMillis = timestampNow - startupTimestamp;
         json.append( "\"buildDurationMillis\" : " ).append( buildTimeMillis ).append( ", " );
         String input1 = hostIP().getHostAddress();
         json.append( "\"hostIP\" : " ).append( Utils.jsonString( input1 ) ).append( ", " );
@@ -394,59 +409,25 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
         // records
         json.append( "\"records\"" ).append( " : [ " );
 
-        final Map<ArtifactCoords, List<ExecutionRecord>> recordsByArtifactCoords = records.stream()
-            .collect( Collectors.groupingBy(ExecutionRecord::artifactBeingBuild) );
-
-        for ( Iterator<List<ExecutionRecord>>  it = recordsByArtifactCoords.values().iterator() ; it.hasNext() ;  )
+        for ( Iterator<ExecutionRecord>  it = records.iterator() ; it.hasNext() ;  )
         {
-            final List<ExecutionRecord> recordsList = it.next();
-            if ( ! recordsList.isEmpty() )
-            {
-                final ExecutionRecord record = recordsList.get( 0 );
-                json.append( "{ " );
-                json.append( "\"groupId\" : " ).append( Utils.jsonString( record.artifactBeingBuild().groupId ) ).append( ", " );
-                json.append( "\"artifactId\" : " ).append( Utils.jsonString( record.artifactBeingBuild().artifactId ) ).append( ", " );
-                json.append( "\"version\" : " ).append( Utils.jsonString( record.artifactBeingBuild().version ) ).append( ", " );
+            final ExecutionRecord record = it.next();
+            json.append( "{ " );
+            json.append( "\"groupId\" : " ).append( Utils.jsonString( record.artifactBeingBuild().groupId ) ).append( ", " );
+            json.append( "\"artifactId\" : " ).append( Utils.jsonString( record.artifactBeingBuild().artifactId ) ).append( ", " );
+            json.append( "\"version\" : " ).append( Utils.jsonString( record.artifactBeingBuild().version ) ).append( ", " );
+            // --
+            json.append( "\"pluginGroupId\" : " ).append( Utils.jsonString( record.plugin().groupId() ) ).append( ", " );
+            json.append( "\"pluginArtifactId\" : " ).append( Utils.jsonString( record.plugin().artifactId() ) ).append( ", " );
+            json.append( "\"pluginVersion\" : " ).append( Utils.jsonString( record.plugin().version() ) ).append( ", " );
+            // --
+            json.append( "\"phase\" : " ).append( Utils.jsonString( record.phase() ) ).append( ", " );
+            json.append( "\"startMillis\" : " ).append( record.startEpochMillis ).append( ", " );
+            json.append( "\"endMillis\" : " ).append( record.endEpochMillis  );
+            json.append( "}" ); // end record
 
-                final Map<ArtifactCoords,Map<String,Long>> execTimeMillisByPlugin = new HashMap<>();
-                for ( ExecutionRecord r : recordsList)
-                {
-                    final Map<String, Long> newEntry = new HashMap<>(Map.of(r.phase, r.executionTimeMillis));
-                    execTimeMillisByPlugin.merge(r.plugin, newEntry, (a, b) ->
-                    {
-                        final Map<String, Long> merged = new HashMap<>(a);
-                        merged.merge(b.keySet().iterator().next(), b.values().iterator().next(), Long::sum);
-                        return merged;
-                    });
-                }
-
-                // exec times by plugin
-                json.append( "\"executionTimesByPlugin\" : {" );
-                for (Iterator<Map.Entry<ArtifactCoords, Map<String, Long>>> entryIt = execTimeMillisByPlugin.entrySet().iterator(); entryIt.hasNext(); )
-                {
-                    final Map.Entry<ArtifactCoords, Map<String, Long>> entry = entryIt.next();
-                    final String pluginCoords = entry.getKey().getAsString();
-                    json.append( Utils.jsonString(pluginCoords )).append(" : { ");
-                    for ( Iterator<Map.Entry<String, Long>> mapIt = entry.getValue().entrySet().iterator(); mapIt.hasNext() ; ) {
-                        final Map.Entry<String, Long> phaseAndDuration = mapIt.next();
-                        json.append(Utils.jsonString(phaseAndDuration.getKey())).append(" : ").append(phaseAndDuration.getValue());
-                        if ( mapIt.hasNext() ) {
-                            json.append(",");
-                        }
-                    }
-                    json.append("}");
-                    if ( entryIt.hasNext() )
-                    {
-                        json.append( ", " );
-                    }
-                }
-                json.append( "}" ); // end executionTimesByPlugin
-                // --
-                json.append( "}" ); // end record
-
-                if ( it.hasNext() ) {
-                    json.append( ", " );
-                }
+            if ( it.hasNext() ) {
+                json.append( ", " );
             }
         }
 

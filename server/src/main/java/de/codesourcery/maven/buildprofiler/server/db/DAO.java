@@ -48,6 +48,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -306,7 +307,8 @@ public class DAO
             result.pluginVersion = rs.getString( "plugin_version" );
             result.artifactId = rs.getLong( "artifact_id" );
             result.artifactVersion = rs.getString( "artifact_version" );
-            result.duration = duration( "duration_millis", ChronoUnit.MILLIS, rs );
+            result.startTime = dateTime( "start_time", rs );
+            result.endTime = dateTime( "end_time", rs );
             return result;
         }
     }
@@ -404,7 +406,8 @@ public class DAO
         Validate.isTrue( toInsert.stream().noneMatch( x -> x.id != 0 ), "this method can only persist new instances" );
         if ( !toInsert.isEmpty() )
         {
-            final List<String> RECORD_COLS = List.of( "build_id", "phase_id", "plugin_artifact_id", "plugin_version", "artifact_id", "artifact_version", "duration_millis" );
+            final List<String> RECORD_COLS = List.of( "build_id", "phase_id", "plugin_artifact_id", "plugin_version",
+                "artifact_id", "artifact_version", "start_time", "end_time" );
 
             jdbcTemplate.execute( (ConnectionCallback<Void>) con ->
             {
@@ -423,7 +426,8 @@ public class DAO
                         stmt.setString( y++, record.pluginVersion );
                         stmt.setLong( y++, record.artifactId );
                         stmt.setString( y++, record.artifactVersion );
-                        stmt.setInt( y++, (int) record.duration.toMillis() );
+                        stmt.setTimestamp( y++, toTimestamp( record.startTime ) );
+                        stmt.setTimestamp( y++, toTimestamp( record.endTime ) );
                         stmt.addBatch();
                     }
                     stmt.executeBatch();
@@ -619,7 +623,7 @@ public class DAO
                     for ( Build build : toInsert )
                     {
                         int y = 1;
-                        stmt.setTimestamp( y++, new Timestamp( build.startTime.toInstant().toEpochMilli() ) );
+                        stmt.setTimestamp( y++, toTimestamp( build.startTime ) );
                         stmt.setInt( y++, (int) build.duration.toMillis() );
                         stmt.setLong( y++, build.host.hostId );
                         stmt.setString( y++, build.projectName );
@@ -808,5 +812,13 @@ public class DAO
             final String sql = "UPDATE " + HOSTS_TABLE + " SET host_name=?, host_ip=?::inet WHERE host_id=?";
             jdbcTemplate.update( sql, host.getHostName().orElse( null ), host.getHostIP().getHostAddress(), host.hostId );
         }
+    }
+
+    private static java.sql.Timestamp toTimestamp(ZonedDateTime dt)
+    {
+        if ( dt == null ) {
+            return null;
+        }
+        return new Timestamp( dt.toInstant().toEpochMilli() );
     }
 }

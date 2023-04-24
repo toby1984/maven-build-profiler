@@ -178,7 +178,7 @@ public class CompareByArtifactsPanel extends Panel implements IWicketUtils
         {
             if ( data == null ) {
                 final Map<Long, List<Record>> recordsByBuildID =
-                    db.getRecords( toCompare.stream().map( x -> x.id ).collect( Collectors.toSet() ) );
+                    db.getRecords( toCompare.stream().map( x -> x.id ).collect( Collectors.toSet() ), DbService.Grouping.ARTIFACT );
 
                 // gather all possible artifacts
                 final Set<Long> ids = recordsByBuildID.values().stream()
@@ -195,7 +195,7 @@ public class CompareByArtifactsPanel extends Panel implements IWicketUtils
                 final List<RowWrapper> wrappers = new ArrayList<>();
                 for ( final ArtifactId id : sortedArtifactIds )
                 {
-                    final List<DurationAndArtifactVersion> timesPerBuildAndPhase = new ArrayList<>();
+                    final List<DurationAndArtifactVersion> timesPerBuildAndArtifact = new ArrayList<>();
                     final Predicate<Record> matchesArtifact = record -> {
                         final Artifact artifact = artifactsByID.get( record.artifactId );
                         return id.matches( artifact );
@@ -206,17 +206,17 @@ public class CompareByArtifactsPanel extends Panel implements IWicketUtils
                         final List<Record> records = recordsByBuildID.get( build.id );
 
                         final long[] result = records.stream().filter( matchesArtifact )
-                            .mapToLong( x -> x.duration.toMillis() ).toArray();
+                            .mapToLong( x -> x.duration().toMillis() ).toArray();
 
                         if ( result.length > 0 )
                         {
                             final Duration sumDuration = Duration.ofMillis(Arrays.stream(result).sum());
-                            timesPerBuildAndPhase.add(new DurationAndArtifactVersion(sumDuration, records.stream().filter(matchesArtifact).findFirst().get().artifactVersion));
+                            timesPerBuildAndArtifact.add(new DurationAndArtifactVersion(sumDuration, records.stream().filter(matchesArtifact).findFirst().get().artifactVersion));
                         } else {
-                            timesPerBuildAndPhase.add( null );
+                            timesPerBuildAndArtifact.add( null );
                         }
                     }
-                    wrappers.add( new RowWrapper( id, timesPerBuildAndPhase ) );
+                    wrappers.add( new RowWrapper( id, timesPerBuildAndArtifact ) );
                 }
                 data =  wrappers;
             }

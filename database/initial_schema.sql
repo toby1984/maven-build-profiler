@@ -88,7 +88,9 @@ CREATE TABLE profiler.records (
   plugin_version text NOT NULL,
   artifact_id bigint NOT NULL REFERENCES profiler.artifacts(artifact_id) ON DELETE CASCADE,
   artifact_version text NOT NULL,
-  duration_millis integer NOT NULL CHECK(duration_millis>=0)
+  start_time timestamptz NOT NULL,
+  end_time timestamptz NOT NULL,
+  CHECK( start_time <= end_time )
 );
 
 CREATE TABLE profiler.db_schema_version (

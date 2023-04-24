@@ -33,9 +33,42 @@ import java.util.Set;
 
 public interface DbService
 {
+    enum Grouping {
+        NONE {
+            @Override
+            public boolean canBeMerged(Record a, Record b)
+            {
+                return false;
+            }
+        },
+        PHASE {
+            @Override
+            public boolean canBeMerged(Record a, Record b)
+            {
+                return a.phaseId == b.phaseId;
+            }
+        },
+        ARTIFACT {
+            @Override
+            public boolean canBeMerged(Record a, Record b)
+            {
+                return a.artifactId == b.artifactId;
+            }
+        },
+        PLUGIN {
+            @Override
+            public boolean canBeMerged(Record a, Record b)
+            {
+                return a.pluginArtifactId == b.pluginArtifactId;
+            }
+        };
+
+        public abstract boolean canBeMerged(Record a, Record b);
+    }
+
     // Record
     List<Record> getRecords(long buildId);
-    Map<Long,List<Record>> getRecords(Set<Long> buildIds);
+    Map<Long,List<Record>> getRecords(Set<Long> buildIds, Grouping grouping);
     void saveRecords(List<Record> toInsert);
 
     // Artifact

@@ -18,6 +18,7 @@ package de.codesourcery.maven.buildprofiler.server.db;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.codesourcery.maven.buildprofiler.common.BuildResult;
+import de.codesourcery.maven.buildprofiler.server.LongInterval;
 import de.codesourcery.maven.buildprofiler.server.model.Artifact;
 import de.codesourcery.maven.buildprofiler.server.model.ArtifactId;
 import de.codesourcery.maven.buildprofiler.server.model.Build;
@@ -54,9 +55,47 @@ public class DbServiceImpl implements DbService
 
     @Override
     @Transactional
-    public Map<Long, List<Record>> getRecords(Set<Long> buildIds)
+    public Map<Long, List<Record>> getRecords(Set<Long> buildIds, Grouping grouping)
     {
-        return dao.getRecords( buildIds );
+        Validate.notNull( buildIds, "buildIds must not be null" );
+        Validate.notNull( grouping, "grouping must not be null" );
+        final Map<Long, List<Record>> map = dao.getRecords( buildIds );
+        map.values().forEach( list -> performGrouping( list, grouping ) );
+        return map;
+    }
+
+    // CAREFUL - mutates input list !!
+    static void performGrouping(List<Record> list, Grouping grouping) {
+
+        Validate.notNull( list, "list must not be null" );
+        Validate.notNull( grouping, "grouping must not be null" );
+
+        if ( list.size() < 2 ) {
+            return;
+        }
+
+        final Map<Long, List<Record>>  grouped = switch( grouping )
+        {
+            case PHASE -> list.stream().collect( Collectors.groupingBy( x -> x.phaseId ) );
+            case ARTIFACT -> list.stream().collect( Collectors.groupingBy( x -> x.artifactId ) );
+            case PLUGIN -> list.stream().collect( Collectors.groupingBy( x -> x.pluginArtifactId ) );
+            case NONE -> null;
+        };
+        if ( grouped == null ) {
+            return;
+        }
+        list.clear();
+        grouped.forEach( (id,toBeMerged) -> {
+            final List<LongInterval> intervals = toBeMerged.stream().map( DbServiceImpl::interval ).collect( Collectors.toList() );
+            final OptionalLong durationMillis = LongInterval.mergeIfPossible( intervals ).stream().mapToLong( LongInterval::length ).reduce( Long::sum );
+            final Record r = toBeMerged.get( 0 );
+            r.setDurationMillis( durationMillis.getAsLong() );
+            list.add( r );
+        });
+    }
+
+    private static LongInterval interval(Record r) {
+        return LongInterval.of( r.startTime.toInstant().toEpochMilli(), r.endTime.toInstant().toEpochMilli() );
     }
 
     @Override
@@ -215,12 +254,9 @@ public class DbServiceImpl implements DbService
         final Set<ArtifactId> artifactIds = new HashSet<>();
         for ( BuildResult.Record record : data.records )
         {
-            record.executionTimesByPlugin.values().stream().map(Map::keySet).flatMap(Collection::stream).distinct().forEach( requiredPhases::add );
             artifactIds.add( new ArtifactId( record.groupId, record.artifactId ) );
-            record.executionTimesByPlugin.keySet().stream().map( x -> {
-                final String[] parts = x.split(":");
-                return new ArtifactId(parts[0], parts[1]);
-            }).distinct().forEach(artifactIds::add );
+            artifactIds.add( new ArtifactId( record.pluginGroupId, record.pluginArtifactId ) );
+            requiredPhases.add( record.phase );
         }
 
         // get phases & insert any missing phases into DB
@@ -255,26 +291,24 @@ public class DbServiceImpl implements DbService
         }
 
         // store records
-        List<Record> records = new ArrayList<>();
+        final List<Record> records = new ArrayList<>();
         for ( final BuildResult.Record r : data.records )
         {
+            final Record rec = new Record();
+            rec.buildId = b.id;
+            rec.phaseId = existingPhases.get( r.phase ).phaseId;
+
+            final Artifact pluginArtifact = found.get( new ArtifactId( r.pluginGroupId, r.pluginArtifactId ) );
+            rec.pluginArtifactId = pluginArtifact.id;
+            rec.pluginVersion = r.pluginVersion;
+
             final Artifact artifact = found.get( new ArtifactId( r.groupId, r.artifactId ) );
-            r.executionTimesByPlugin.forEach( (pluginArtifactIdString,phaseAndDuration) ->
-            {
-                final String[] parts = pluginArtifactIdString.split(":");
-                final long pluginArtifactId = found.get(new ArtifactId(parts[0], parts[1])).id;
-                phaseAndDuration.forEach( (phase,duration) -> {
-                    final Record rec = new Record();
-                    rec.buildId = b.id;
-                    rec.phaseId = existingPhases.get(phase).phaseId;
-                    rec.pluginArtifactId = pluginArtifactId;
-                    rec.pluginVersion = parts[2];
-                    rec.artifactId = artifact.id;
-                    rec.artifactVersion = r.version;
-                    rec.duration = Duration.ofMillis( duration );
-                    records.add( rec );
-                });
-            });
+            rec.artifactId = artifact.id;
+
+            rec.artifactVersion = r.version;
+            rec.startTime = Instant.ofEpochMilli( r.startMillis ).atZone( ZoneId.systemDefault() );
+            rec.endTime = Instant.ofEpochMilli( r.endMillis ).atZone( ZoneId.systemDefault() );
+            records.add( rec );
         }
         dao.saveRecords( records );
     }
