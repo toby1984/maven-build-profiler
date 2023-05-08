@@ -411,9 +411,9 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
         {
             final ArtifactCoords c = iterator.next();
             json.append("{");
-            json.append("\"groupId\" : ").append(Utils.jsonString(c.groupId())).append(",");
-            json.append("\"artifactId\" : ").append(Utils.jsonString(c.artifactId())).append(",");
-            json.append("\"version\" : ").append(Utils.jsonString(c.version()));
+            json.append("\"groupId\" : ").append(SharedUtils.jsonString(c.groupId())).append(",");
+            json.append("\"artifactId\" : ").append(SharedUtils.jsonString(c.artifactId())).append(",");
+            json.append("\"version\" : ").append(SharedUtils.jsonString(c.version()));
             json.append("}");
             if ( iterator.hasNext() ) {
                 json.append(",");
@@ -428,14 +428,14 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
         {
             final ExecutionRecord record = it.next();
             json.append( "{ " );
-            json.append( "\"groupId\" : " ).append( SharedUtils.jsonString( record.artifactBeingBuild().groupId ) ).append( ", " );
-            json.append( "\"artifactId\" : " ).append( SharedUtils.jsonString( record.artifactBeingBuild().artifactId ) ).append( ", " );
-            json.append( "\"version\" : " ).append( SharedUtils.jsonString( record.artifactBeingBuild().version ) ).append( ", " );
+
+            int idx = artifactIndexByCoords.get(record.artifactBeingBuild().getAsString());
+            json.append("\"artifactIdx\" : ").append(idx).append(", ");
 
             // --
-            json.append( "\"pluginGroupId\" : " ).append( SharedUtils.jsonString( record.plugin().groupId() ) ).append( ", " );
-            json.append( "\"pluginArtifactId\" : " ).append( SharedUtils.jsonString( record.plugin().artifactId() ) ).append( ", " );
-            json.append( "\"pluginVersion\" : " ).append( SharedUtils.jsonString( record.plugin().version() ) ).append( ", " );
+            idx = artifactIndexByCoords.get(record.plugin().getAsString());
+            json.append( "\"pluginIdx\" : " ).append(idx).append( ", " );
+
             // --
             json.append( "\"phase\" : " ).append( SharedUtils.jsonString( record.phase() ) ).append( ", " );
             json.append( "\"startMillis\" : " ).append( record.startEpochMillis ).append( ", " );
