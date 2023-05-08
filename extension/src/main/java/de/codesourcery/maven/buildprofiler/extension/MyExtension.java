@@ -18,7 +18,7 @@ package de.codesourcery.maven.buildprofiler.extension;
 import de.codesourcery.maven.buildprofiler.shared.ArtifactCoords;
 import de.codesourcery.maven.buildprofiler.shared.Constants;
 import org.apache.commons.lang3.Validate;
-import de.codesourcery.maven.buildprofiler.shared.Utils;
+import de.codesourcery.maven.buildprofiler.shared.SharedUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.eventspy.AbstractEventSpy;
 import org.apache.maven.eventspy.EventSpy;
@@ -338,18 +338,18 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
         final long buildTimeMillis = timestampNow - startupTimestamp;
         json.append( "\"buildDurationMillis\" : " ).append( buildTimeMillis ).append( ", " );
         String input1 = hostIP().getHostAddress();
-        json.append( "\"hostIP\" : " ).append( Utils.jsonString( input1 ) ).append( ", " );
-        hostName().ifPresent(x -> json.append( "\"hostName\" : " ).append( Utils.jsonString( x ) ).append( ", " ) );
+        json.append( "\"hostIP\" : " ).append( SharedUtils.jsonString( input1 ) ).append( ", " );
+        hostName().ifPresent(x -> json.append( "\"hostName\" : " ).append( SharedUtils.jsonString( x ) ).append( ", " ) );
         json.append( "\"maxConcurrency\" : " ).append( instance.maxConcurrency ).append( ", " );
         String input = System.getProperty("java.version");
-        json.append( "\"jvmVersion\" : " ).append( Utils.jsonString( input ) ).append( ", " );
+        json.append( "\"jvmVersion\" : " ).append( SharedUtils.jsonString( input ) ).append( ", " );
         json.append( "\"availableProcessors\" : " ).append( Runtime.getRuntime().availableProcessors() ).append( ", " );
-        json.append( "\"projectName\" : " ).append( Utils.jsonString( instance.projectName ) ).append( ", " );
-        json.append( "\"branchName\" : " ).append( Utils.jsonString( instance.branchName ) ).append( ", " );
+        json.append( "\"projectName\" : " ).append( SharedUtils.jsonString( instance.projectName ) ).append( ", " );
+        json.append( "\"branchName\" : " ).append( SharedUtils.jsonString( instance.branchName ) ).append( ", " );
 
         if ( instance.gitHash != null )
         {
-            json.append("\"gitHash\" : ").append( Utils.jsonString( instance.gitHash ) ).append(", ");
+            json.append("\"gitHash\" : ").append( SharedUtils.jsonString( instance.gitHash ) ).append(", ");
         }
         // system properties
         json.append("\"systemProperties\" : { ");
@@ -428,16 +428,16 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
         {
             final ExecutionRecord record = it.next();
             json.append( "{ " );
-
-            int idx = artifactIndexByCoords.get(record.artifactBeingBuild().getAsString());
-            json.append("\"artifactIdx\" : ").append(idx).append(", ");
-
-            // --
-            idx = artifactIndexByCoords.get(record.plugin().getAsString());
-            json.append( "\"pluginIdx\" : " ).append(idx).append( ", " );
+            json.append( "\"groupId\" : " ).append( SharedUtils.jsonString( record.artifactBeingBuild().groupId ) ).append( ", " );
+            json.append( "\"artifactId\" : " ).append( SharedUtils.jsonString( record.artifactBeingBuild().artifactId ) ).append( ", " );
+            json.append( "\"version\" : " ).append( SharedUtils.jsonString( record.artifactBeingBuild().version ) ).append( ", " );
 
             // --
-            json.append( "\"phase\" : " ).append( Utils.jsonString( record.phase() ) ).append( ", " );
+            json.append( "\"pluginGroupId\" : " ).append( SharedUtils.jsonString( record.plugin().groupId() ) ).append( ", " );
+            json.append( "\"pluginArtifactId\" : " ).append( SharedUtils.jsonString( record.plugin().artifactId() ) ).append( ", " );
+            json.append( "\"pluginVersion\" : " ).append( SharedUtils.jsonString( record.plugin().version() ) ).append( ", " );
+            // --
+            json.append( "\"phase\" : " ).append( SharedUtils.jsonString( record.phase() ) ).append( ", " );
             json.append( "\"startMillis\" : " ).append( record.startEpochMillis ).append( ", " );
             json.append( "\"endMillis\" : " ).append( record.endEpochMillis  );
             json.append( "}" ); // end record
@@ -471,9 +471,9 @@ public class MyExtension extends AbstractEventSpy implements LogEnabled
                 }
                 first = false;
                 final String value = entry.getValue();
-                final String quotedKey = Utils.jsonString( key );
+                final String quotedKey = SharedUtils.jsonString( key );
                 final String quotedValue;
-                quotedValue = value == null ? "null" : Utils.jsonString( value );
+                quotedValue = value == null ? "null" : SharedUtils.jsonString( value );
                 json.append( quotedKey ).append( " : " ).append( quotedValue );
             }
         }

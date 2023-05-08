@@ -35,10 +35,8 @@ import org.apache.wicket.ajax.markup.html.AjaxLink;
 import org.apache.wicket.ajax.markup.html.form.AjaxButton;
 import org.apache.wicket.ajax.markup.html.form.AjaxCheckBox;
 import org.apache.wicket.extensions.ajax.markup.html.autocomplete.AutoCompleteSettings;
-import org.apache.wicket.extensions.ajax.markup.html.autocomplete.AutoCompleteTextField;
 import org.apache.wicket.extensions.ajax.markup.html.autocomplete.DefaultCssAutoCompleteTextField;
 import org.apache.wicket.extensions.ajax.markup.html.modal.ModalDialog;
-import org.apache.wicket.extensions.ajax.markup.html.modal.ModalWindow;
 import org.apache.wicket.extensions.ajax.markup.html.modal.theme.DefaultTheme;
 import org.apache.wicket.extensions.markup.html.repeater.data.grid.ICellPopulator;
 import org.apache.wicket.extensions.markup.html.repeater.data.sort.SortOrder;
@@ -48,7 +46,6 @@ import org.apache.wicket.extensions.markup.html.repeater.data.table.ISortableDat
 import org.apache.wicket.extensions.markup.html.repeater.data.table.LambdaColumn;
 import org.apache.wicket.extensions.markup.html.repeater.util.SortableDataProvider;
 import org.apache.wicket.markup.html.WebMarkupContainer;
-import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.form.Button;
 import org.apache.wicket.markup.html.form.ChoiceRenderer;
 import org.apache.wicket.markup.html.form.DropDownChoice;
@@ -540,7 +537,7 @@ public class HomePage extends AbstractBasePage
         columns.add( column( TableColumn.PROJECT_NAME, build -> build.projectName ) );
         columns.add( column( TableColumn.BRANCH_NAME, build -> build.branchName , build -> "GIT hash: "+build.gitHash , 350 ) );
         columns.add( column( TableColumn.HOST_NAME, HomePage.this::getHostName ) );
-        columns.add( column( TableColumn.BUILD_DURATION, build -> Utils.formatDuration( build.duration ) ) );
+        columns.add( column( TableColumn.BUILD_DURATION, build -> ServerUtils.formatDuration( build.duration ) ) );
         return new MyDataTable<>( wicketId, columns, dataProvider,  criteria.limit) {
             @Override
             protected Item<Build> newRowItem(String id, int index, IModel<Build> model)

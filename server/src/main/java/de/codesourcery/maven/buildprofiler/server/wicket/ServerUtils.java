@@ -15,10 +15,23 @@
  */
 package de.codesourcery.maven.buildprofiler.server.wicket;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
+
+import java.awt.Color;
 import java.time.Duration;
 
-public class Utils
+public class ServerUtils
 {
+    public static String toHtmlColor(Color awtColor) {
+        Validate.notNull( awtColor, "awtColor must not be null" );
+        return "#" + toHex( awtColor.getRed() ) + toHex( awtColor.getGreen() ) + toHex( awtColor.getBlue() );
+    }
+
+    private static String toHex(int value) {
+        return StringUtils.leftPad( Integer.toHexString( value ), 2, '0' );
+    }
+
     public static String formatDuration(Duration d) {
 
         long millis = d.toMillis();

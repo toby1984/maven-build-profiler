@@ -16,7 +16,7 @@
 package de.codesourcery.maven.buildprofiler.server.wicket.components.charts;
 
 import de.codesourcery.maven.buildprofiler.server.wicket.JsonResponseHandler;
-import de.codesourcery.maven.buildprofiler.shared.Utils;
+import de.codesourcery.maven.buildprofiler.shared.SharedUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -71,7 +71,7 @@ public abstract class LineChart<T extends XYDataItem> extends Panel
                 {
                     final T item = iterator.next();
                     final String s = LineChart.this.getXAxisLabelFor( item );
-                    json.append( Utils.jsonString( s ) );
+                    json.append( SharedUtils.jsonString( s ) );
 
                     if ( iterator.hasNext() ) {
                         json.append( "," );
@@ -84,7 +84,7 @@ public abstract class LineChart<T extends XYDataItem> extends Panel
 
                 // dataset #1
                 json.append( "{" );
-                json.append( "\"name\" : " ).append( Utils.jsonString( LineChart.this.getChartLabel() ) ).append(",");
+                json.append( "\"name\" : " ).append( SharedUtils.jsonString( LineChart.this.getChartLabel() ) ).append(",");
 
                 // Y values
                 json.append( "\"values\" : [ " );
@@ -104,7 +104,7 @@ public abstract class LineChart<T extends XYDataItem> extends Panel
                 json.append( "]" );
                 json.append( "}, " ); // end data
 
-                json.append( "\"title\" : %s ,".formatted( Utils.jsonString( getChartLabel() )) );
+                json.append( "\"title\" : %s ,".formatted( SharedUtils.jsonString( getChartLabel() )) );
                 json.append( "\"type\" : \"line\"," );
                 json.append( "\"colors\" : [ \"black\" ] " );
 

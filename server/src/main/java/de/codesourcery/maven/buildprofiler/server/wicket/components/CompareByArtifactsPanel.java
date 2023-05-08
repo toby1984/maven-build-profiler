@@ -23,7 +23,7 @@ import de.codesourcery.maven.buildprofiler.server.model.Build;
 import de.codesourcery.maven.buildprofiler.server.model.Record;
 import de.codesourcery.maven.buildprofiler.server.wicket.CompareByPhasesPage;
 import de.codesourcery.maven.buildprofiler.server.wicket.IWicketUtils;
-import de.codesourcery.maven.buildprofiler.server.wicket.Utils;
+import de.codesourcery.maven.buildprofiler.server.wicket.ServerUtils;
 import de.codesourcery.maven.buildprofiler.server.wicket.components.datatable.MyDataTable;
 import de.codesourcery.maven.buildprofiler.server.wicket.components.tooltip.TooltipBehaviour;
 import org.apache.commons.lang3.Validate;
@@ -288,7 +288,7 @@ public class CompareByArtifactsPanel extends Panel implements IWicketUtils
             result.add( new LambdaColumn<>( Model.of( formatter.format( build.startTime ) ), x ->
             {
                 final Optional<Duration> record = x.getRecord( finalIdx ).map( DurationAndArtifactVersion::duration );
-                String msg = record.map(Utils::formatDuration).orElse("n/a");
+                String msg = record.map( ServerUtils::formatDuration).orElse("n/a");
                 if ( record.isPresent() && x.isSlowest( finalIdx ) ) {
                     final Optional<Duration> fastest = x.getFastest();
                     if ( fastest.isPresent() )

@@ -16,8 +16,8 @@
 package de.codesourcery.maven.buildprofiler.server.wicket.components.charts;
 
 import de.codesourcery.maven.buildprofiler.server.wicket.JsonResponseHandler;
-import de.codesourcery.maven.buildprofiler.shared.Utils;
-import org.apache.commons.lang3.StringUtils;
+import de.codesourcery.maven.buildprofiler.server.wicket.ServerUtils;
+import de.codesourcery.maven.buildprofiler.shared.SharedUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,7 +30,6 @@ import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.panel.Panel;
 import org.apache.wicket.model.IModel;
 
-import java.awt.Color;
 import java.util.Iterator;
 import java.util.List;
 
@@ -105,7 +104,7 @@ let chart = new frappe.Chart("#chart", {
                 for ( Iterator<PieChartItem> iterator = items.iterator(); iterator.hasNext(); )
                 {
                     final PieChartItem item = iterator.next();
-                    json.append( Utils.jsonString( item.label() ) );
+                    json.append( SharedUtils.jsonString( item.label() ) );
 
                     if ( iterator.hasNext() ) {
                         json.append( "," );
@@ -118,7 +117,7 @@ let chart = new frappe.Chart("#chart", {
 
                 // dataset #1
                 json.append( "{" );
-                json.append( "\"name\" : " ).append( Utils.jsonString( PieChart.this.getChartLabel() ) ).append(",");
+                json.append( "\"name\" : " ).append( SharedUtils.jsonString( PieChart.this.getChartLabel() ) ).append(",");
 
                 // Y values
                 json.append( "\"values\" : [ " );
@@ -138,7 +137,7 @@ let chart = new frappe.Chart("#chart", {
                 json.append( "]" );
                 json.append( "}, " ); // end data
 
-                json.append( "\"title\" : %s ,".formatted( Utils.jsonString( getChartLabel() )) );
+                json.append( "\"title\" : %s ,".formatted( SharedUtils.jsonString( getChartLabel() )) );
                 json.append( "\"type\" : \"percentage\"," );
                 json.append( "\"maxSlices\" : " ).append( items.size()+1 ).append( "," );
                 json.append( "\"colors\" : [ ");
@@ -146,7 +145,7 @@ let chart = new frappe.Chart("#chart", {
                 for ( Iterator<PieChartItem> it = items.iterator(); it.hasNext(); )
                 {
                     final PieChartItem item = it.next();
-                    json.append( Utils.jsonString( toHtmlColor( item.color() ) ) );
+                    json.append( SharedUtils.jsonString( ServerUtils.toHtmlColor( item.color() ) ) );
                     if ( it.hasNext() ) {
                         json.append( ", " );
                     }
@@ -163,14 +162,6 @@ let chart = new frappe.Chart("#chart", {
         } );
         c.setOutputMarkupPlaceholderTag( true );
         add( c );
-    }
-
-    protected static String toHtmlColor(Color awtColor) {
-        return "#" + toHex( awtColor.getRed() ) + toHex( awtColor.getGreen() ) + toHex( awtColor.getBlue() );
-    }
-
-    private static String toHex(int value) {
-        return StringUtils.leftPad( Integer.toHexString( value ), 2, '0' );
     }
 
     protected abstract String getChartLabel();

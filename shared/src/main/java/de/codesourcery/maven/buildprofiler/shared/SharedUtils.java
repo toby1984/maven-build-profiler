@@ -15,7 +15,7 @@
  */
 package de.codesourcery.maven.buildprofiler.shared;
 
-public class Utils
+public class SharedUtils
 {
     public static String jsonString(String input)
     {
