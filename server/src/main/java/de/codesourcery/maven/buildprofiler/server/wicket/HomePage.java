@@ -213,60 +213,6 @@ public class HomePage extends AbstractBasePage
         final Form<Void> form = new Form<>( "form" );
         add( form );
 
-        // TODO: Remove debug code
-        final Model<MyObj> m = new Model<>();
-
-
-        final AutoCompleteSettings s = new AutoCompleteSettings();
-        final DefaultCssAutoCompleteTextField<MyObj> txtField = new DefaultCssAutoCompleteTextField<>(
-            "autocomplete", m )
-        {
-            @SuppressWarnings("unchecked")
-            @Override
-            public <C> IConverter<C> getConverter(Class<C> type)
-            {
-                return (IConverter<C>) new IConverter<MyObj>()
-                {
-                    @Override
-                    public MyObj convertToObject(String value, Locale locale) throws ConversionException
-                    {
-                        return MyObj.findByText( value ).orElseThrow( () -> new ConversionException( "error" ) );
-                    }
-
-                    @Override
-                    public String convertToString(MyObj value, Locale locale)
-                    {
-                        return value == null ? null : value.text;
-                    }
-                };
-            }
-
-            @Override
-            protected Iterator<MyObj> getChoices(String input)
-            {
-                final Predicate<MyObj> predicate;
-                if ( StringUtils.isBlank(input))
-                {
-                    predicate = x -> true;
-                } else {
-                    predicate = x -> x.text.startsWith( input );
-                }
-                return Arrays.stream( MyObj.values() ).filter( predicate )
-                    .sorted( (a, b) -> a.text.compareToIgnoreCase( b.text ) )
-                    .toList().iterator();
-            }
-        };
-        txtField.setType( MyObj.class );
-        txtField.add( new AjaxEventBehavior("blur")
-        {
-            @Override
-            protected void onEvent(AjaxRequestTarget target)
-            {
-                System.out.println( "==== Blur, current value = " + m.getObject() );
-            }
-        } );
-        form.add( txtField );
-
         // table container
         final WebMarkupContainer tableContainer = new WebMarkupContainer( "tableContainer" );
         tableContainer.setOutputMarkupId( true );
