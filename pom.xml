@@ -20,7 +20,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>de.code-sourcery.maven.buildprofiler</groupId>
   <artifactId>maven-build-profiler-parent</artifactId>
-  <version>1.0.5-SNAPSHOT</version>
+  <version>1.0.5</version>
   <packaging>pom</packaging>
   <name>parent</name>
   <description>Maven extension that records build execution times for every plugin and lifecycle phase in a build and uploads the metrics to a HTTP server with a simple web UI.</description>
@@ -98,7 +98,7 @@
     <connection>scm:git:git@github.com:toby1984/maven-build-profiler.git</connection>
     <developerConnection>scm:git:git@github.com:toby1984/maven-build-profiler.git</developerConnection>
     <url>https://github.com/toby1984/maven-build-profiler</url>
-    <tag>HEAD</tag>
+    <tag>maven-build-profiler-parent-1.0.5</tag>
   </scm>
 
   <developers>
@@ -255,37 +255,37 @@
       <dependency>
         <groupId>de.code-sourcery.maven.buildprofiler</groupId>
         <artifactId>maven-build-profiler-extension</artifactId>
-        <version>1.0.5-SNAPSHOT</version>
+        <version>1.0.5</version>
       </dependency>
 
       <dependency>
         <groupId>de.code-sourcery.maven.buildprofiler</groupId>
         <artifactId>maven-build-profiler-standalone</artifactId>
-        <version>1.0.5-SNAPSHOT</version>
+        <version>1.0.5</version>
       </dependency>
 
       <dependency>
         <groupId>de.code-sourcery.maven.buildprofiler</groupId>
         <artifactId>maven-build-profiler-war</artifactId>
-        <version>1.0.5-SNAPSHOT</version>
+        <version>1.0.5</version>
       </dependency>
 
       <dependency>
         <groupId>de.code-sourcery.maven.buildprofiler</groupId>
         <artifactId>maven-build-profiler-server-common</artifactId>
-        <version>1.0.5-SNAPSHOT</version>
+        <version>1.0.5</version>
       </dependency>
 
       <dependency>
         <groupId>de.code-sourcery.maven.buildprofiler</groupId>
         <artifactId>maven-build-profiler-shared</artifactId>
-        <version>1.0.5-SNAPSHOT</version>
+        <version>1.0.5</version>
       </dependency>
 
       <dependency>
         <groupId>de.code-sourcery.maven.buildprofiler</groupId>
         <artifactId>maven-build-profiler-server</artifactId>
-        <version>1.0.5-SNAPSHOT</version>
+        <version>1.0.5</version>
       </dependency>
       
       <dependency>

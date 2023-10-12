@@ -21,7 +21,7 @@
   <parent>
     <groupId>de.code-sourcery.maven.buildprofiler</groupId>
     <artifactId>maven-build-profiler-parent</artifactId>
-    <version>1.0.5-SNAPSHOT</version>
+    <version>1.0.5</version>
   </parent>
   <artifactId>maven-build-profiler-extension</artifactId>
 
@@ -47,7 +47,7 @@
     <dependency>
       <groupId>de.code-sourcery.maven.buildprofiler</groupId>
       <artifactId>maven-build-profiler-shared</artifactId>
-      <version>1.0.5-SNAPSHOT</version>
+      <version>1.0.5</version>
     </dependency>
 
   </dependencies>
