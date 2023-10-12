@@ -15,27 +15,19 @@
  */
 package de.codesourcery.maven.buildprofiler.server.wicket;
 
-import de.codesourcery.maven.buildprofiler.common.Interval;
-import de.codesourcery.maven.buildprofiler.server.db.DAO;
-import de.codesourcery.maven.buildprofiler.server.db.DbService;
-import de.codesourcery.maven.buildprofiler.server.model.Build;
-import de.codesourcery.maven.buildprofiler.server.model.Host;
-import de.codesourcery.maven.buildprofiler.server.wicket.components.LinkWithLabel;
-import de.codesourcery.maven.buildprofiler.server.wicket.components.MyModalDialog;
-import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.DataSet;
-import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.DateXYDataItem;
-import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.LineChart;
-import de.codesourcery.maven.buildprofiler.server.wicket.components.datatable.MyDataTable;
-import de.codesourcery.maven.buildprofiler.server.wicket.components.tooltip.TooltipBehaviour;
-import org.apache.commons.lang3.StringUtils;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import org.apache.commons.lang3.Validate;
-import org.apache.wicket.ajax.AjaxEventBehavior;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.AjaxLink;
 import org.apache.wicket.ajax.markup.html.form.AjaxButton;
 import org.apache.wicket.ajax.markup.html.form.AjaxCheckBox;
-import org.apache.wicket.extensions.ajax.markup.html.autocomplete.AutoCompleteSettings;
-import org.apache.wicket.extensions.ajax.markup.html.autocomplete.DefaultCssAutoCompleteTextField;
 import org.apache.wicket.extensions.ajax.markup.html.modal.ModalDialog;
 import org.apache.wicket.extensions.ajax.markup.html.modal.theme.DefaultTheme;
 import org.apache.wicket.extensions.markup.html.repeater.data.grid.ICellPopulator;
@@ -59,25 +51,25 @@ import org.apache.wicket.model.LoadableDetachableModel;
 import org.apache.wicket.model.Model;
 import org.apache.wicket.model.ResourceModel;
 import org.apache.wicket.spring.injection.annot.SpringBean;
-import org.apache.wicket.util.convert.ConversionException;
-import org.apache.wicket.util.convert.IConverter;
 import org.danekja.java.util.function.serializable.SerializableFunction;
-
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Predicate;
+import de.codesourcery.maven.buildprofiler.common.Interval;
+import de.codesourcery.maven.buildprofiler.server.db.DAO;
+import de.codesourcery.maven.buildprofiler.server.db.DbService;
+import de.codesourcery.maven.buildprofiler.server.model.Build;
+import de.codesourcery.maven.buildprofiler.server.model.Host;
+import de.codesourcery.maven.buildprofiler.server.wicket.components.LinkWithLabel;
+import de.codesourcery.maven.buildprofiler.server.wicket.components.MyModalDialog;
+import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.DataSet;
+import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.DateXYDataItem;
+import de.codesourcery.maven.buildprofiler.server.wicket.components.charts.LineChart;
+import de.codesourcery.maven.buildprofiler.server.wicket.components.datatable.MyDataTable;
+import de.codesourcery.maven.buildprofiler.server.wicket.components.tooltip.TooltipBehaviour;
 
 public class HomePage extends AbstractBasePage
 {
+    private static final DateTimeFormatter LONG_DATE_FORMAT = DateTimeFormatter.ofPattern( "yyyy-MM-dd HH:mm:ss" );
+    private static final DateTimeFormatter SHORT_DATE_FORMAT = DateTimeFormatter.ofPattern( "MM-dd" );
+
     // magic value indicating "Any Host"
     private static final Host ANY_HOST = new Host();
     // magic value indicating "Any branch"
@@ -179,26 +171,6 @@ public class HomePage extends AbstractBasePage
         return criteria;
     }
 
-    private enum MyObj {
-        A("aab"),
-        B("aaac"),
-        C("aaaad");
-
-        private final String text;
-
-        MyObj(String text)
-        {
-            this.text = text;
-        }
-
-        public static Optional<MyObj> findByText(String txt) {
-            if ( StringUtils.isBlank( txt ) ) {
-                return Optional.empty();
-            }
-            return Arrays.stream( MyObj.values() ).filter( txt::equals ).findFirst();
-        }
-    }
-
     @Override
     protected void onInitialize()
     {
@@ -218,7 +190,41 @@ public class HomePage extends AbstractBasePage
         tableContainer.setOutputMarkupId( true );
         form.add( tableContainer );
 
-        // line chart
+        // line chart showing data for the full time-range the user selected
+        // fullSelectionLinechart
+        final IModel<DataSet<DateXYDataItem>> fullChartData = new IModel<>() {
+
+            @Override
+            public void detach()
+            {
+                dataProvider.detach();
+            }
+
+            @Override
+            public DataSet<DateXYDataItem> getObject()
+            {
+                final List<DateXYDataItem> items = dataProvider.list(0, dataProvider.size() ).stream().map( x -> new DateXYDataItem( x.startTime, x.duration.toMillis() ) ).toList();
+                return new DataSet<>( items );
+            }
+        };
+
+        final LineChart<DateXYDataItem> fullChart = new LineChart<>("fullSelectionLinechart", fullChartData)
+        {
+            @Override
+            protected String getXAxisLabelFor(DateXYDataItem x)
+            {
+                return SHORT_DATE_FORMAT.format( x.x() );
+            }
+
+            @Override
+            protected String getChartLabel()
+            {
+                return "Build time [s]";
+            }
+        };
+        tableContainer.add( fullChart.setHideDots( true ).setIsSeries(true).setItemMapping( DateXYDataItem.divideYAxisValueMapping( 1000.0 ) ) );
+
+        // line chart showing data only for the current page
         final IModel<DataSet<DateXYDataItem>> chartData = new IModel<>() {
 
             @Override
@@ -232,28 +238,27 @@ public class HomePage extends AbstractBasePage
             {
                 final long offset = dataTable.getCurrentPage() * dataTable.getItemsPerPage();
                 final long count = Math.min( dataTable.getItemsPerPage(), dataProvider.size() - offset );
-                final List<DateXYDataItem> items = dataProvider.list(offset, count ).stream().map( x -> new DateXYDataItem( x.startTime, x.duration.toMillis() ) ).toList();
+                final List<? extends Build> builds = dataProvider.list( offset, count );
+                final List<DateXYDataItem> items = builds.stream().map( x -> new DateXYDataItem( x.startTime, x.duration.toMillis() ) ).toList();
                 return new DataSet<>( items );
             }
         };
 
         final LineChart<DateXYDataItem> chart = new LineChart<>("linechart", chartData)
         {
-
             @Override
             protected String getXAxisLabelFor(DateXYDataItem x)
             {
-                final DateTimeFormatter DF = DateTimeFormatter.ofPattern( "yyyy-MM-dd HH:mm:ss" );
-                return DF.format( x.x() );
+                return LONG_DATE_FORMAT.format( x.x() );
             }
 
             @Override
             protected String getChartLabel()
             {
-                return "Build time [ms]";
+                return "Build time [s]";
             }
         };
-        tableContainer.add( chart );
+        tableContainer.add( chart.setItemMapping( DateXYDataItem.divideYAxisValueMapping( 1000.0 ) ) );
 
         // data table
         final TableColumn sortCol = switch( criteria.sortColumn ) {

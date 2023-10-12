@@ -51,6 +51,7 @@ var charts = {
             const callbackUrl = elem.getAttribute("callbackUrl");
             // perform XHR request to retrieve chart properties
             const success = chartConfig => {
+                console.log("Chart '" + elementId + "' , config " + JSON.stringify(chartConfig));
                 new frappe.Chart("#" + elementId, chartConfig );
             };
             charts.sendAjax(callbackUrl, success);

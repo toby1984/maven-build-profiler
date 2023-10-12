@@ -29,8 +29,12 @@ import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.panel.Panel;
 import org.apache.wicket.model.IModel;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public abstract class LineChart<T extends XYDataItem> extends Panel
 {
@@ -38,6 +42,9 @@ public abstract class LineChart<T extends XYDataItem> extends Panel
 
     private WebMarkupContainer c;
     private final IModel<DataSet<T>> dataset;
+    private boolean hideDots;
+    private boolean isSeries = true;
+    private Function<T,T> itemMapping = Function.identity();
 
     public LineChart(String wicketId, IModel<DataSet<T>> dataset) {
         super( wicketId, dataset);
@@ -65,13 +72,21 @@ public abstract class LineChart<T extends XYDataItem> extends Panel
                 final StringBuilder json = new StringBuilder( "{ \"data\" : {" );
 
                 // labels
+                // always sort ascending (by time)
+                // as humans (at least the ones writing from left-to-right)
+                // expected the LHS of the chart to show the older data
+                final List<T> items = dataset.getObject().getItems().stream()
+                    .map( itemMapping )
+                    .sorted( Comparator.comparingDouble( XYDataItem::getX ) )
+                    .collect( Collectors.toCollection( ArrayList::new ) );
+
+                final List<String> xAxisLabels = items.stream().map( LineChart.this::getXAxisLabelFor ).toList();
+
                 json.append("\"labels\" : [ ");
-                final List<T> items = dataset.getObject().getItems();
-                for ( Iterator<T> iterator = items.iterator(); iterator.hasNext(); )
+                for ( Iterator<String> iterator = xAxisLabels.iterator(); iterator.hasNext() ; )
                 {
-                    final T item = iterator.next();
-                    final String s = LineChart.this.getXAxisLabelFor( item );
-                    json.append( SharedUtils.jsonString( s ) );
+                    final String label = iterator.next();
+                    json.append( SharedUtils.jsonString( label ) );
 
                     if ( iterator.hasNext() ) {
                         json.append( "," );
@@ -108,6 +123,19 @@ public abstract class LineChart<T extends XYDataItem> extends Panel
                 json.append( "\"type\" : \"line\"," );
                 json.append( "\"colors\" : [ \"black\" ] " );
 
+                if ( hideDots ) {
+                    json.append(", \"lineOptions\" : { ");
+                    json.append("\"hideDots\" : 1 ");
+                    json.append("}");
+                }
+
+                if ( isSeries )
+                {
+                    json.append( ", \"axisOptions\" : { " );
+                    json.append( "\"xIsSeries\" : true " );
+                    json.append( "}" );
+                }
+
                 json.append( "}" ); // end json
 
                 if ( LOG.isDebugEnabled() ) {
@@ -130,5 +158,23 @@ public abstract class LineChart<T extends XYDataItem> extends Panel
         super.renderHead( response );
         final String js = "charts.createChart('" + c.getMarkupId() + "');";
         response.render( OnDomReadyHeaderItem.forScript( js ) );
+    }
+
+    public LineChart<T> setHideDots(boolean hideDots)
+    {
+        this.hideDots = hideDots;
+        return this;
+    }
+
+    public LineChart<T> setIsSeries(boolean isSeries)
+    {
+        this.isSeries = isSeries;
+        return this;
+    }
+
+    public LineChart<T> setItemMapping(Function<T, T> itemMapping)
+    {
+        this.itemMapping = itemMapping;
+        return this;
     }
 }

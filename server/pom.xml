@@ -27,6 +27,14 @@
   <name>server</name>
 
   <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <javac.source>17</javac.source>
+    <javac.target>17</javac.target>
+    <javac.release>17</javac.release>
+    
+    <maven.compiler.source>${javac.source}</maven.compiler.source>
+    <maven.compiler.target>${javac.target}</maven.compiler.target>
+    <maven.compiler.release>${javac.release}</maven.compiler.release>
   </properties>
   
   <dependencies>

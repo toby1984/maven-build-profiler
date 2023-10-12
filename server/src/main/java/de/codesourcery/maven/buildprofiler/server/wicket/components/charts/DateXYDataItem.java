@@ -16,6 +16,7 @@
 package de.codesourcery.maven.buildprofiler.server.wicket.components.charts;
 
 import java.time.ZonedDateTime;
+import java.util.function.Function;
 
 public record DateXYDataItem(ZonedDateTime x, double y) implements XYDataItem
 {
@@ -29,5 +30,14 @@ public record DateXYDataItem(ZonedDateTime x, double y) implements XYDataItem
     public double getY()
     {
         return  y;
+    }
+
+    /**
+     * Returns a mapping function that creates new items by dividing the Y axis value using a given factor.
+     * @param factor factor to divide Y axis values by
+     * @return
+     */
+    public static Function<DateXYDataItem,DateXYDataItem> divideYAxisValueMapping(double factor) {
+        return a -> new DateXYDataItem( a.x, a.y / factor );
     }
 }
